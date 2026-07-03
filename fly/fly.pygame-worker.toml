@@ -1,0 +1,69 @@
+# stem-trinket-pygame-worker — the single pygame worker: shell (:8010) + noVNC (:6080).
+#
+# FIXED SCALE: exactly ONE Machine, ever. The OSS pygame manager is
+# single-worker by design — deploy with --ha=false (the Makefile does) and
+# never `fly scale count` this app above 1. Concurrency is capped below;
+# scale-to-zero covers idle cost instead of autoscaling.
+#
+# PRIVATE + CREDENTIAL-FREE: untrusted student code runs here; no secrets on
+# this app, isolation is the Firecracker boundary (do not add gVisor).
+# Allocate flycast BEFORE first deploy: fly ips allocate-v6 --private -a stem-trinket-pygame-worker
+#
+# NB: env vars set here do NOT reach the shell process — supervisord launches
+# it with an explicit environment= list (supervisor/shell.conf). The worker
+# needs no env config, so that's fine; just don't try to configure it via [env].
+# Uses the stock Dockerfile at serverside/pygame/worker (that dir is the build context).
+app = "stem-trinket-pygame-worker"
+primary_region = "lhr"
+
+# Socket.IO shell — reached by the pygame manager via
+# stem-trinket-pygame-worker.flycast:8010 (flycast so a stopped worker wakes).
+[[services]]
+  protocol = "tcp"
+  internal_port = 8010
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 8010
+    handlers = []
+
+  [services.concurrency]
+    # App/manager-layer cap for the single worker.
+    type = "connections"
+    soft_limit = 4
+    hard_limit = 6
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+    # supervisord brings up Xvfb + VNC + websockify + the node shell.
+    grace_period = "60s"
+
+# noVNC / websockify stream — reached from stem-trinket-exec's /pygame-vnc/ location
+# via stem-trinket-pygame-worker.flycast:6080.
+[[services]]
+  protocol = "tcp"
+  internal_port = 6080
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 6080
+    handlers = []
+
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 8
+    hard_limit = 10
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "60s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

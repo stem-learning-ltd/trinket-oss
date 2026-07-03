@@ -1,0 +1,54 @@
+# stem-trinket-pygame-manager — Socket.IO manager for pygame execution (:8100).
+# PRIVATE: no public IPs. Reached only from stem-trinket-exec via
+# stem-trinket-pygame-manager.flycast:8100.
+# Allocate flycast BEFORE first deploy: fly ips allocate-v6 --private -a stem-trinket-pygame-manager
+# Uses the stock Dockerfile at serverside/pygame/manager (that dir is the build context).
+app = "stem-trinket-pygame-manager"
+primary_region = "lhr"
+
+[env]
+  # NODE_CONFIG overrides both default.json and the image's production.json
+  # (which points workerUrl at the Docker-DNS name pygame-worker:8010).
+  #
+  # workerUrl uses .flycast, NOT .internal, deliberately: the worker scales to
+  # zero, and only a fly-proxy-mediated (flycast) connection can wake a stopped
+  # Machine. A .internal DNS lookup for a stopped Machine just fails.
+  #
+  # NB the pygame manager's key is genUrl (not generatedUrl like python3).
+  # genUrl becomes live once generated files upload to Tigris (README follow-up F4).
+  NODE_CONFIG = """
+  {
+    "manager": {
+      "workerUrl": "http://stem-trinket-pygame-worker.flycast:8010",
+      "corsOrigins": ["https://trinket.stem.org.uk"],
+      "genUrl": "https://stem-trinket-generated.fly.storage.tigris.dev/pygame"
+    }
+  }
+  """
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8100
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Pygame is occasional-use: let the manager sleep too. First run after idle
+  # pays manager + worker wake (~seconds).
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 8100
+    handlers = []
+
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 40
+    hard_limit = 50
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "15s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

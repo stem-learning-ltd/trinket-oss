@@ -1,0 +1,73 @@
+# Fly production overrides for the main Trinket app (non-secret values only —
+# secrets arrive as env vars via custom-environment-variables.yaml + `fly secrets set`).
+# Copied to config/production.yaml by fly/docker/app.Dockerfile; node-config
+# deep-merges this over config/default.yaml when NODE_ENV=production.
+
+features:
+  courses: true
+  # Uploads need the Tigris endpoint patch in config/aws.js first — flip to
+  # true after README follow-up F2 lands. Enabling it before that points the
+  # aws-sdk at real AWS S3, where these buckets don't exist.
+  assets: false
+  python3: true
+  pygame: true
+  java: false
+  R: false
+
+app:
+  url:
+    protocol: https
+    hostname: trinket.stem.org.uk
+  plugins:
+    session:
+      cookieOptions:
+        # password (the session secret) comes from the SESSION_SECRET Fly secret
+        isSecure: true
+        domain: .trinket.stem.org.uk
+
+db:
+  mongo:
+    # host/user/pass/uri come from Fly secrets (custom-environment-variables.yaml).
+    # database is here for completeness; an Atlas URI (follow-up F1) carries its own.
+    database: trinket
+  redis:
+    enabled: true
+    app:
+      # host/pass come from Fly secrets; Fly managed Redis (Upstash) private
+      # endpoint is plaintext :6379 over the private network.
+      port: 6379
+
+aws:
+  # Tigris ignores region; 'auto' is what `fly storage create` emits.
+  region: auto
+  # One private bucket for all upload types at this scale. Tigris bucket names
+  # are globally unique — if stem-trinket-uploads is taken, change it here AND
+  # in fly/Makefile (TIGRIS_UPLOADS).
+  buckets:
+    userassets:
+      name: stem-trinket-uploads
+      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      thumbnail: 'thumb-%{s}'
+      # No Lambda on Fly: thumbnails fall back to the original asset host.
+      thumbnailHost: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      thumbnailBucket: stem-trinket-uploads
+    snapshots:
+      name: stem-trinket-uploads
+      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+    materials:
+      name: stem-trinket-uploads
+      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+    useravatars:
+      name: stem-trinket-uploads
+      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+
+serverside:
+  # The execution stack lives on its own public hostname (cross-origin from the
+  # app page — hence corsOrigins on the managers). The frontend derives the
+  # Socket.IO path from these URLs: /python3/socket.io/, /pygame/socket.io/.
+  python3:
+    api:
+      default: 'https://exec.trinket.stem.org.uk/python3'
+  pygame:
+    api:
+      default: 'https://exec.trinket.stem.org.uk/pygame'

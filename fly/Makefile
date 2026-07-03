@@ -1,0 +1,175 @@
+# Fly.io orchestration for self-hosted Trinket OSS.
+# Paths resolve relative to this Makefile, so it works from any cwd:
+#   make -C fly validate        (or: make -f fly/Makefile validate)
+#
+# ONLY `make validate` is read-only. Everything else creates/mutates billable
+# Fly resources — run in the order documented by `make bootstrap` / fly/README.md.
+
+FLY    ?= fly
+ORG    ?= personal
+REGION := lhr
+
+FLY_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+REPO    := $(abspath $(FLY_DIR)/..)
+
+# App names are GLOBAL on Fly. If any `apps create` fails with "taken",
+# rename consistently: here, in the matching fly.*.toml, and (for the four
+# internal apps) every .flycast reference in fly/config/exec/nginx.conf and
+# the NODE_CONFIG blocks of the manager tomls.
+APP_MAIN      := stem-trinket-app
+APP_EXEC      := stem-trinket-exec
+APP_PY3_MGR   := stem-trinket-python3-manager
+APP_PY3_SHELL := stem-trinket-python3-shell
+APP_PG_MGR    := stem-trinket-pygame-manager
+APP_PG_WORKER := stem-trinket-pygame-worker
+
+# Untrusted code runs on the shell/worker apps: they stay private (flycast
+# only) and NEVER get secrets. There is no secrets target for them on purpose.
+PRIVATE_APPS := $(APP_PY3_MGR) $(APP_PY3_SHELL) $(APP_PG_MGR) $(APP_PG_WORKER)
+ALL_APPS     := $(APP_MAIN) $(APP_EXEC) $(PRIVATE_APPS)
+
+REDIS_NAME      := stem-trinket-redis
+TIGRIS_UPLOADS  := stem-trinket-uploads
+TIGRIS_GENERATED:= stem-trinket-generated
+
+HOST_MAIN := trinket.stem.org.uk
+HOST_EXEC := exec.trinket.stem.org.uk
+
+CONFIGS := $(FLY_DIR)/fly.app.toml \
+           $(FLY_DIR)/fly.exec.toml \
+           $(FLY_DIR)/fly.python3-manager.toml \
+           $(FLY_DIR)/fly.python3-shell.toml \
+           $(FLY_DIR)/fly.pygame-manager.toml \
+           $(FLY_DIR)/fly.pygame-worker.toml
+
+.PHONY: help validate apps-create flycast redis storage secrets-app secrets-tigris \
+        deploy deploy-app deploy-exec deploy-python3-manager deploy-python3-shell \
+        deploy-pygame-manager deploy-pygame-worker scale certs status bootstrap
+
+help:
+	@echo "Read-only:"
+	@echo "  validate         fly config validate on all six fly.toml files"
+	@echo "  status           fly status across all apps"
+	@echo "Mutating (see fly/README.md for the full ordered runbook):"
+	@echo "  bootstrap        prints the first-time setup order"
+	@echo "  apps-create      create the six Fly apps"
+	@echo "  flycast          allocate private IPv6 on the four internal apps (BEFORE first deploy)"
+	@echo "  redis            create Fly managed Redis ($(REDIS_NAME))"
+	@echo "  storage          create Tigris buckets ($(TIGRIS_UPLOADS), $(TIGRIS_GENERATED))"
+	@echo "  secrets-app      set core secrets on $(APP_MAIN) (from env vars)"
+	@echo "  secrets-tigris   set Tigris S3 creds on $(APP_MAIN) (from env vars)"
+	@echo "  deploy           deploy all six apps in dependency order"
+	@echo "  scale            seed Machine counts (app=2, shells=3)"
+	@echo "  certs            add TLS certs for $(HOST_MAIN) and $(HOST_EXEC)"
+
+## ---------- read-only ----------
+
+validate:
+	@for c in $(CONFIGS); do \
+		echo "== $$c"; \
+		$(FLY) config validate -c $$c || exit 1; \
+	done
+	@echo "All fly.toml files valid."
+
+status:
+	@for a in $(ALL_APPS); do echo "== $$a"; $(FLY) status -a $$a || true; done
+
+## ---------- one-time resource creation ----------
+
+apps-create:
+	@for a in $(ALL_APPS); do $(FLY) apps create $$a --org $(ORG); done
+
+# Run BEFORE the first deploy of the internal apps: with a flycast address
+# already present, flyctl won't auto-allocate public IPs for their services.
+flycast:
+	@for a in $(PRIVATE_APPS); do $(FLY) ips allocate-v6 --private -a $$a; done
+
+redis:
+	$(FLY) redis create --name $(REDIS_NAME) --region $(REGION) --org $(ORG) \
+		--no-replicas --disable-eviction
+	@echo ">> Copy the host and password from the printed redis:// URL into"
+	@echo ">> REDIS_HOST / REDIS_PASSWORD, then run: make secrets-app"
+
+storage:
+	$(FLY) storage create --name $(TIGRIS_UPLOADS) --org $(ORG)
+	$(FLY) storage create --name $(TIGRIS_GENERATED) --org $(ORG) --public
+	@echo ">> Copy AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_ENDPOINT_URL_S3"
+	@echo ">> from the output into your env, then run: make secrets-tigris"
+
+## ---------- secrets (main app only — execution apps stay credential-free) ----------
+
+secrets-app:
+	@test -n "$$MONGODB_URI"    || { echo "MONGODB_URI not set (Atlas connection string)"; exit 1; }
+	@test -n "$$SESSION_SECRET" || { echo "SESSION_SECRET not set (32+ random chars)"; exit 1; }
+	@test -n "$$REDIS_HOST"     || { echo "REDIS_HOST not set (fly-$(REDIS_NAME).upstash.io)"; exit 1; }
+	@test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD not set"; exit 1; }
+	$(FLY) secrets set -a $(APP_MAIN) \
+		MONGODB_URI="$$MONGODB_URI" \
+		SESSION_SECRET="$$SESSION_SECRET" \
+		REDIS_HOST="$$REDIS_HOST" \
+		REDIS_PASSWORD="$$REDIS_PASSWORD"
+
+secrets-tigris:
+	@test -n "$$AWS_ACCESS_KEY_ID"     || { echo "AWS_ACCESS_KEY_ID not set"; exit 1; }
+	@test -n "$$AWS_SECRET_ACCESS_KEY" || { echo "AWS_SECRET_ACCESS_KEY not set"; exit 1; }
+	@test -n "$$AWS_ENDPOINT_URL_S3"   || { echo "AWS_ENDPOINT_URL_S3 not set"; exit 1; }
+	$(FLY) secrets set -a $(APP_MAIN) \
+		AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+		AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+		AWS_ENDPOINT_URL_S3="$$AWS_ENDPOINT_URL_S3"
+
+## ---------- deploys ----------
+# --ha=false everywhere: flyctl otherwise creates 2 Machines per new app.
+# Counts are seeded explicitly by `make scale`. The pygame worker must NEVER
+# exceed 1 Machine (single-worker design).
+# Execution tiers deploy before exec/app so first user traffic finds them.
+
+deploy-python3-shell:
+	$(FLY) deploy $(REPO)/serverside/python/shell -c $(FLY_DIR)/fly.python3-shell.toml --ha=false
+
+deploy-python3-manager:
+	$(FLY) deploy $(REPO)/serverside/python/manager -c $(FLY_DIR)/fly.python3-manager.toml --ha=false
+
+deploy-pygame-worker:
+	$(FLY) deploy $(REPO)/serverside/pygame/worker -c $(FLY_DIR)/fly.pygame-worker.toml --ha=false
+
+deploy-pygame-manager:
+	$(FLY) deploy $(REPO)/serverside/pygame/manager -c $(FLY_DIR)/fly.pygame-manager.toml --ha=false
+
+deploy-exec:
+	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.exec.toml \
+		--dockerfile $(FLY_DIR)/docker/exec.Dockerfile --ha=false
+
+deploy-app:
+	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.app.toml \
+		--dockerfile $(FLY_DIR)/docker/app.Dockerfile --ha=false
+
+deploy: deploy-python3-shell deploy-python3-manager deploy-pygame-worker \
+        deploy-pygame-manager deploy-exec deploy-app
+
+## ---------- post-deploy ----------
+
+scale:
+	$(FLY) scale count 2 -a $(APP_MAIN) -y
+	$(FLY) scale count 3 -a $(APP_PY3_SHELL) -y
+	# exec, managers and the pygame worker stay at 1 (from --ha=false deploys)
+
+certs:
+	$(FLY) certs add $(HOST_MAIN) -a $(APP_MAIN)
+	$(FLY) certs add $(HOST_EXEC) -a $(APP_EXEC)
+	@echo ">> Create the DNS records shown above, then check: fly certs show $(HOST_MAIN) -a $(APP_MAIN)"
+
+bootstrap:
+	@echo "First-time setup order (each step detailed in fly/README.md):"
+	@echo "  1. fly auth login"
+	@echo "  2. make apps-create              # rename apps first if names are taken"
+	@echo "  3. make flycast                  # BEFORE any deploy of the internal apps"
+	@echo "  4. Create MongoDB Atlas cluster (AWS eu-west-2) -> export MONGODB_URI"
+	@echo "  5. make redis                    # -> export REDIS_HOST, REDIS_PASSWORD"
+	@echo "  6. make storage                  # -> export AWS_* Tigris creds"
+	@echo "  7. Apply follow-up F1 (config/db.js Atlas URI patch) — required to boot"
+	@echo "  8. export SESSION_SECRET=... ; make secrets-app secrets-tigris"
+	@echo "  9. make deploy"
+	@echo " 10. make scale"
+	@echo " 11. make certs                    # then create the DNS records it prints"
+	@echo " 12. Smoke-test per fly/README.md, then work through follow-ups F2-F4"

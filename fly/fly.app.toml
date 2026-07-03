@@ -1,0 +1,38 @@
+# stem-trinket-app — main Node/Hapi + AngularJS app.
+# PUBLIC: https://trinket.stem.org.uk
+# Deploy with the repo root as build context (see fly/Makefile: deploy-app).
+app = "stem-trinket-app"
+primary_region = "lhr"
+
+[build]
+  # Relative to the build context (repo root). Mirrors the stock Dockerfile
+  # plus the Fly config overlay (production.yaml + custom-environment-variables.yaml).
+  dockerfile = "fly/docker/app.Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  # The app has no dedicated health endpoint; the homepage is the closest
+  # end-to-end signal (it exercises the app process and its Mongo connection).
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

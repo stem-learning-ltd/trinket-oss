@@ -1,0 +1,35 @@
+# stem-trinket-exec — nginx front for the execution stack.
+# PUBLIC: https://exec.trinket.stem.org.uk
+# Serving execution on its own hostname avoids path-routing entirely:
+# fly-proxy routes by hostname, and this nginx does the /python3, /pygame,
+# /pygame-vnc path fan-out over Fly private networking.
+app = "stem-trinket-exec"
+primary_region = "lhr"
+
+[build]
+  # Relative to the build context (repo root). nginx:alpine + the Fly-patched
+  # nginx.conf (fdaa::3 resolver, .flycast upstreams).
+  dockerfile = "fly/docker/exec.Dockerfile"
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 400
+    hard_limit = 500
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

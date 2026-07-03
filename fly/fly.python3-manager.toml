@@ -1,0 +1,58 @@
+# stem-trinket-python3-manager — Socket.IO manager for Python 3 execution (:8100).
+# PRIVATE: no public IPs. Reached only from stem-trinket-exec via
+# stem-trinket-python3-manager.flycast:8100.
+# Allocate the flycast address BEFORE the first deploy so flyctl never
+# auto-allocates public IPs:  fly ips allocate-v6 --private -a stem-trinket-python3-manager
+# Uses the stock Dockerfile at serverside/python/manager (that dir is the build context).
+app = "stem-trinket-python3-manager"
+primary_region = "lhr"
+
+[env]
+  # node-config merges NODE_CONFIG on top of config/default.json.
+  # This is the only env route to `shells`: custom-environment-variables.json
+  # maps just GENERATED_URL and CORS_ORIGINS, so a plain SHELLS env var would
+  # be silently ignored (bitten by this on the eval VM).
+  #
+  # shells       -> the shell pool via flycast, so connections load-balance
+  #                 across shells and wake stopped ones as the pool scales.
+  # corsOrigins  -> the app origin; the exec stack is cross-origin in prod.
+  # generatedUrl -> public Tigris URL. Becomes live once the manager uploads
+  #                 generated files to Tigris (README follow-up F3); until
+  #                 then matplotlib image/HTML output will 404.
+  NODE_CONFIG = """
+  {
+    "shells": ["http://stem-trinket-python3-shell.flycast:8010"],
+    "manager": {
+      "corsOrigins": ["https://trinket.stem.org.uk"],
+      "generatedUrl": "https://stem-trinket-generated.fly.storage.tigris.dev/python3"
+    }
+  }
+  """
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8100
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Keep one manager warm so a class hitting "Run" doesn't eat a cold start.
+  min_machines_running = 1
+
+  # Raw TCP on the flycast address (no public handlers). WebSockets pass
+  # through untouched.
+  [[services.ports]]
+    port = 8100
+    handlers = []
+
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "15s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

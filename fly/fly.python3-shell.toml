@@ -1,0 +1,42 @@
+# stem-trinket-python3-shell — the pool of Python 3 execution shells (:8010).
+# This is the tier that scales (fly scale count N; seeded at 3).
+#
+# PRIVATE + CREDENTIAL-FREE by design: untrusted student code runs here.
+# No secrets are ever set on this app (nothing to exfiltrate); host/tenant
+# safety is the Firecracker microVM boundary. Residual risk is outbound
+# abuse (mining/DoS) — monitor, per README security notes.
+#
+# Reached only by the manager via stem-trinket-python3-shell.flycast:8010 —
+# fly-proxy load-balances across started Machines and wakes stopped ones,
+# which is what makes scale-to-zero work.
+# Allocate flycast BEFORE first deploy: fly ips allocate-v6 --private -a stem-trinket-python3-shell
+# Uses the stock Dockerfile at serverside/python/shell (that dir is the build context).
+app = "stem-trinket-python3-shell"
+primary_region = "lhr"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8010
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 8010
+    handlers = []
+
+  [services.concurrency]
+    # Per-Machine session cap: fills a shell to soft_limit before spilling to
+    # the next, hard-stops at hard_limit. Tune with real classroom load.
+    type = "connections"
+    soft_limit = 8
+    hard_limit = 12
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
