@@ -6,7 +6,10 @@
 # Fly resources — run in the order documented by `make bootstrap` / fly/README.md.
 
 FLY    ?= fly
-ORG    ?= personal
+# The STEM Learning Fly org — NOT the personal org flyctl would otherwise
+# default to. Org placement is decided only at resource creation (apps-create,
+# redis, storage); every later command inherits the app's org.
+ORG    ?= stem-learning
 REGION := lhr
 
 FLY_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))

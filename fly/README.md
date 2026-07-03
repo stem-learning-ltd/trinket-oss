@@ -89,7 +89,9 @@ images build from it as Docker context.
 ## Prerequisites
 
 - `flyctl` installed and logged in: `fly auth login`
-- Membership of the Fly org you'll deploy to (`ORG=` on make calls, default `personal`)
+- Membership of the STEM Learning Fly org — the Makefile defaults to
+  `ORG=stem-learning` so resources land there, not in anyone's personal org.
+  Verify placement after creation: `fly apps list --org stem-learning`
 - DNS control over `stem.org.uk` (two CNAMEs needed)
 - App names are **globally unique** on Fly. If `make apps-create` reports a name
   taken, rename it consistently: `fly/Makefile`, the matching `fly.*.toml`, and
@@ -98,7 +100,7 @@ images build from it as Docker context.
 
 ## Runbook — first-time setup, in order
 
-All `make` commands: `make -C fly <target> ORG=<your-org>`.
+All `make` commands: `make -C fly <target>` (the org defaults to `stem-learning`).
 
 ### 0. Validate configs (read-only)
 
