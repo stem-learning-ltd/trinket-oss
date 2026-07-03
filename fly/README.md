@@ -337,6 +337,90 @@ The app has no `/health` route, so `fly.app.toml` checks `GET /`; the managers
 get TCP checks. A tiny `/health` on the app (and managers) would make checks
 cheaper and unambiguous.
 
+## Releasing updates (day-2 operations)
+
+Deploys build from **your local working tree**, not from GitHub — so always
+release from a clean, pushed `fly-production` checkout (`git status` clean),
+otherwise the running image can't be traced back to a commit.
+
+### What changed → what to run
+
+| Change | Command |
+|---|---|
+| App source (`app.js`, `lib/`, `config/`, `public/`) | `make -C fly deploy-app` |
+| App config overlay (`fly/config/app/*.yaml`) | `make -C fly deploy-app` (baked into the image) |
+| Exec nginx (`fly/config/exec/nginx.conf`) | `make -C fly deploy-exec` |
+| Manager wiring (`NODE_CONFIG` in a `fly.*.toml`) | `make -C fly deploy-<that app>` — env changes still roll Machines |
+| Execution runtime (`serverside/python/*`, `serverside/pygame/*`) | `make -C fly deploy-<matching app>` |
+| Secrets | `fly secrets set -a stem-trinket-app K=V` — restarts the app itself; rotating `SESSION_SECRET` logs every user out |
+| Capacity | `fly scale count N -a stem-trinket-python3-shell` (never scale the pygame worker) |
+
+A full redeploy of everything is `make -C fly deploy` — safe to run any time;
+apps whose inputs didn't change produce identical images.
+
+### Release checklist
+
+1. Merge/commit to `fly-production`, push.
+2. Pre-flight (all local, no Fly resources touched):
+   `make -C fly validate` · `node --check config/db.js config/aws.js` ·
+   `docker run --rm -v $PWD/fly/config/exec/nginx.conf:/etc/nginx/nginx.conf:ro nginx:alpine nginx -t`
+3. Deploy the affected app(s) per the table.
+4. Smoke-test (section above). `fly logs -a <app>` while a class-sized test runs.
+
+### Rolling back
+
+Fly keeps prior images. Find the last good one and redeploy it by reference:
+
+```sh
+fly releases --image -a stem-trinket-app        # note the previous image ref
+fly deploy -c fly/fly.app.toml --image registry.fly.io/stem-trinket-app:<ref>
+```
+
+Then revert the offending commit on `fly-production` so the next source deploy
+doesn't reintroduce it.
+
+### Pulling in upstream changes
+
+```sh
+git remote add upstream https://github.com/trinketapp/trinket-oss  # once
+git fetch upstream && git merge upstream/master   # on fly-production
+```
+
+Review the merge for three things before deploying: (1) changes under
+`config/` defaults or `serverside/*/config/` that our `production.yaml` /
+`NODE_CONFIG` overrides assume; (2) changes to the stock root `Dockerfile` —
+`fly/docker/app.Dockerfile` duplicates it and must be updated to match by
+hand; (3) a new upstream `public-components.tgz` release (next section).
+
+### The frontend components bundle
+
+`public-components.tgz` (Ace editor, Trinket's Skulpt fork, etc.) has **no
+build script** — upstream assembles it out-of-band and publishes it as a
+release asset. We build the app from our own mirror
+(`frontend-components-v1.1.0` on the fork), SHA256-pinned in
+`fly/docker/app.Dockerfile`. To ship a new bundle (upstream published one, or
+we need to patch a frontend lib):
+
+```sh
+# 1. Start from the current bundle
+curl -LO https://github.com/stem-learning-ltd/trinket-oss/releases/download/frontend-components-v1.1.0/public-components.tgz
+tar xzf public-components.tgz            # or fetch upstream's new tarball instead
+
+# 2. (If patching) edit public/components/..., then re-pack
+tar czf public-components.tgz public/
+
+# 3. Publish as a NEW fork release (never replace an existing asset in place —
+#    the old hash must stay valid for rollbacks)
+sha256sum public-components.tgz
+gh release create frontend-components-v<X.Y.Z> public-components.tgz \
+  --repo stem-learning-ltd/trinket-oss --target main \
+  --title "Frontend components bundle v<X.Y.Z>" \
+  --notes "sha256: <hash>; <what changed>"
+
+# 4. Update URL and sha256 TOGETHER in fly/docker/app.Dockerfile, commit, then
+make -C fly deploy-app
+```
+
 ## Security posture (untrusted student code)
 
 - **Isolation:** every Machine is a Firecracker microVM — that's the
