@@ -86,6 +86,11 @@ fixes with an ordinary merge of `trinketapp/trinket-oss` `master` into the
 deployment branch. The source tree must be present at every deploy — the
 images build from it as Docker context.
 
+The 159MB `public-components.tgz` frontend bundle the app image needs is
+mirrored as a release on our fork (`frontend-components-v1.1.0`) and
+SHA256-pinned in `docker/app.Dockerfile`, so builds don't depend on upstream
+keeping (or not replacing) their release asset.
+
 ## Prerequisites
 
 - `flyctl` installed and logged in: `fly auth login`

@@ -24,9 +24,12 @@ COPY --chown=trinket:trinket . /usr/local/node/trinket
 
 WORKDIR /usr/local/node/trinket
 
-# Download frontend components from GitHub release
+# Frontend components bundle, mirrored to OUR fork's releases (not upstream's —
+# upstream could remove/replace theirs) and integrity-pinned. To bump: upload
+# the new tarball as a fork release, update the URL and hash together.
 RUN curl -L --silent -o ./public-components.tgz \
-    https://github.com/trinketapp/trinket-oss/releases/download/v1.1.0/public-components.tgz \
+    https://github.com/stem-learning-ltd/trinket-oss/releases/download/frontend-components-v1.1.0/public-components.tgz \
+    && echo "58422c0d0c7d25c1e6fdd1e014ff690f41c899257703e416e85a0fb0a926181f  public-components.tgz" | sha256sum -c - \
     && tar xzf public-components.tgz \
     && rm public-components.tgz
 
