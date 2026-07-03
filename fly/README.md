@@ -260,7 +260,7 @@ a cold-start pause while worker Machines wake).
 
 ## Application-side follow-ups (config alone cannot do these)
 
-### F1 — REQUIRED before first boot: Atlas connection string in `config/db.js`
+### F1 — ✅ APPLIED on fly-production: Atlas connection string in `config/db.js`
 
 Stock code builds `mongodb://` from host/port/database parts — no TLS, SRV or
 replica-set options, so it cannot reach Atlas. The overlay already maps the
@@ -278,7 +278,7 @@ function connect() {
   // ... rest unchanged
 ```
 
-### F2 — Uploads to Tigris: S3 endpoint in `config/aws.js`, then enable assets
+### F2 — endpoint patch ✅ APPLIED on fly-production; still to do: enable assets
 
 `aws-sdk` v2 defaults to real AWS S3 endpoints; Tigris needs the custom
 endpoint (already mapped from the `AWS_ENDPOINT_URL_S3` secret to `aws.endpoint`):
