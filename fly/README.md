@@ -191,10 +191,20 @@ If a bucket name is taken, rename in `Makefile`, `config/app/production.yaml`
 ### 6. Set secrets — main app ONLY
 
 ```sh
-export SESSION_SECRET="$(openssl rand -hex 32)"   # persist this somewhere safe
+export SESSION_SECRET="$(openssl rand -hex 32)"   # save in the team password manager FIRST
 make -C fly secrets-app
 make -C fly secrets-tigris
 ```
+
+These exports are **one-time**: the make targets push the values into Fly's
+secret store, and every deploy reads them from there — `make deploy` never
+needs them again. Don't persist them in a `.env`/mise file (plaintext secrets
+on disk, and a second source of truth that drifts from Fly). Note Fly secrets
+are write-only (`fly secrets list` shows digests only): Atlas/Redis/Tigris
+creds can be re-read or rotated from their consoles, but `SESSION_SECRET`
+exists nowhere else — losing it means regenerating it, which logs every user
+out. For a repeatable ceremony later, inject from a secret manager at
+invocation time (e.g. `op run -- make -C fly secrets-app`), never from a file.
 
 **Never set secrets on `trinket-python3-*` or `trinket-pygame-*`.** The
 shell/worker apps run untrusted student code; keeping them credential-free
