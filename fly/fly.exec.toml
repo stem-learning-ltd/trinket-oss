@@ -7,9 +7,11 @@ app = "stem-trinket-exec"
 primary_region = "lhr"
 
 [build]
-  # Relative to the build context (repo root). nginx:alpine + the Fly-patched
-  # nginx.conf (fdaa::3 resolver, .flycast upstreams).
-  dockerfile = "fly/docker/exec.Dockerfile"
+  # flyctl resolves this relative to THIS file's directory (and it wins over
+  # any --dockerfile flag). The build context is still the repo root — COPY
+  # paths inside the Dockerfile are context-relative, not config-relative.
+  # nginx:alpine + the Fly-patched nginx.conf (fdaa::3 resolver, .flycast upstreams).
+  dockerfile = "docker/exec.Dockerfile"
 
 [http_service]
   internal_port = 80

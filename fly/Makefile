@@ -139,13 +139,13 @@ deploy-pygame-worker:
 deploy-pygame-manager:
 	$(FLY) deploy $(REPO)/serverside/pygame/manager -c $(FLY_DIR)/fly.pygame-manager.toml --ha=false
 
+# No --dockerfile flag: flyctl takes the dockerfile from each toml's [build]
+# section (config-file-relative) and ignores the flag when both are present.
 deploy-exec:
-	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.exec.toml \
-		--dockerfile $(FLY_DIR)/docker/exec.Dockerfile --ha=false
+	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.exec.toml --ha=false
 
 deploy-app:
-	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.app.toml \
-		--dockerfile $(FLY_DIR)/docker/app.Dockerfile --ha=false
+	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.app.toml --ha=false
 
 deploy: deploy-python3-shell deploy-python3-manager deploy-pygame-worker \
         deploy-pygame-manager deploy-exec deploy-app
