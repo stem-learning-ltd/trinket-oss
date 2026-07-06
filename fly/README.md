@@ -64,7 +64,7 @@ makes scale-to-zero actually work.
 | `docker/exec.Dockerfile` | nginx:alpine + Fly-patched nginx.conf |
 | `config/exec/nginx.conf` | Fly resolver (`fdaa::3`), `.flycast` upstreams, WS upgrade locations |
 | `config/app/production.yaml` | Non-secret app config (hostnames, features, buckets, exec URLs) |
-| `config/app/custom-environment-variables.yaml` | Maps Fly secrets → app config keys |
+| *(app secrets)* | One `NODE_CONFIG` JSON secret composed by `make secrets-app` — the app's config@0.4.x has no custom-environment-variables support |
 | `Makefile` | validate / create / secrets / deploy / scale / certs targets |
 
 The four execution apps reuse the **stock repo Dockerfiles** unchanged
@@ -193,11 +193,19 @@ If a bucket name is taken, rename in `Makefile`, `config/app/production.yaml`
 ```sh
 export SESSION_SECRET="$(openssl rand -hex 32)"   # save in the team password manager FIRST
 make -C fly secrets-app
-make -C fly secrets-tigris
 ```
 
-These exports are **one-time**: the make targets push the values into Fly's
-secret store, and every deploy reads them from there — `make deploy` never
+The app pins **config@0.4.x**, which predates `custom-environment-variables`
+support — individual env vars never reach the config tree (found the hard way:
+the app boots with `localhost` defaults). What 0.4.x does support is a single
+`$NODE_CONFIG` env var of JSON merged over the yaml files, so `secrets-app`
+composes ALL app secrets (Mongo URI, session secret, Redis, Tigris) into one
+`NODE_CONFIG` Fly secret using `jq`. The Tigris `AWS_*` exports are optional
+on first run — re-run `make secrets-app` with them exported when enabling
+uploads (it recomposes the whole secret, so keep all the exports in place).
+
+These exports are **one-time**: the target pushes the composed value into
+Fly's secret store, and every deploy reads it from there — `make deploy` never
 needs them again. Don't persist them in a `.env`/mise file (plaintext secrets
 on disk, and a second source of truth that drifts from Fly). Note Fly secrets
 are write-only (`fly secrets list` shows digests only): Atlas/Redis/Tigris
@@ -278,8 +286,8 @@ a cold-start pause while worker Machines wake).
 ### F1 — ✅ APPLIED on fly-production: Atlas connection string in `config/db.js`
 
 Stock code builds `mongodb://` from host/port/database parts — no TLS, SRV or
-replica-set options, so it cannot reach Atlas. The overlay already maps the
-`MONGODB_URI` secret to `db.mongo.uri`; teach `connect()` to prefer it:
+replica-set options, so it cannot reach Atlas. `db.mongo.uri` arrives via the
+`NODE_CONFIG` secret (`make secrets-app`); teach `connect()` to prefer it:
 
 ```js
 function connect() {
@@ -296,7 +304,7 @@ function connect() {
 ### F2 — endpoint patch ✅ APPLIED on fly-production; still to do: enable assets
 
 `aws-sdk` v2 defaults to real AWS S3 endpoints; Tigris needs the custom
-endpoint (already mapped from the `AWS_ENDPOINT_URL_S3` secret to `aws.endpoint`):
+endpoint (`aws.endpoint`, delivered via the `NODE_CONFIG` secret):
 
 ```js
 var awsConfig = {
@@ -305,8 +313,9 @@ var awsConfig = {
   , region          : config.aws.region
 };
 
-// Tigris (S3-compatible) — custom endpoint, virtual-host style
-if (config.has('aws.endpoint') && config.aws.endpoint) {
+// Tigris (S3-compatible) — custom endpoint, virtual-host style.
+// NB the app pins config@0.4.x, which has no .has() — property access only.
+if (config.aws && config.aws.endpoint) {
   awsConfig.endpoint = config.aws.endpoint;
 }
 

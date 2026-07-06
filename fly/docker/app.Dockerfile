@@ -1,7 +1,8 @@
 # Fly.io build of the main Trinket app.
-# Mirrors the repo-root Dockerfile, then overlays Fly production config:
-#   - config/production.yaml               (non-secret prod values)
-#   - config/custom-environment-variables.yaml (maps Fly secrets -> config keys)
+# Mirrors the repo-root Dockerfile, then overlays config/production.yaml
+# (non-secret prod values). Secrets arrive at runtime as the single
+# NODE_CONFIG env var (JSON) — the app pins config@0.4.x, which predates
+# custom-environment-variables support; NODE_CONFIG is the override it has.
 # Build context must be the REPO ROOT (fly/Makefile handles this).
 FROM node:16-bullseye
 
@@ -35,10 +36,9 @@ RUN curl -L --silent -o ./public-components.tgz \
 
 RUN npm install --legacy-peer-deps
 
-# Fly config overlay. node-config load order (later wins):
-# default.yaml < production.yaml < custom-environment-variables.yaml (env vars)
-RUN cp fly/config/app/production.yaml config/production.yaml \
-    && cp fly/config/app/custom-environment-variables.yaml config/custom-environment-variables.yaml
+# Fly config overlay. config@0.4.x load order (later wins):
+# default.yaml < production.yaml < $NODE_CONFIG (JSON env var, set as a Fly secret)
+RUN cp fly/config/app/production.yaml config/production.yaml
 
 ENV NODE_ENV=production
 

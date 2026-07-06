@@ -1,7 +1,8 @@
 # Fly production overrides for the main Trinket app (non-secret values only —
-# secrets arrive as env vars via custom-environment-variables.yaml + `fly secrets set`).
-# Copied to config/production.yaml by fly/docker/app.Dockerfile; node-config
-# deep-merges this over config/default.yaml when NODE_ENV=production.
+# secrets arrive at runtime via the single NODE_CONFIG JSON secret, composed by
+# `make secrets-app`; the app's config@0.4.x has no custom-environment-variables
+# support). Copied to config/production.yaml by fly/docker/app.Dockerfile and
+# deep-merged over config/default.yaml when NODE_ENV=production.
 
 features:
   courses: true
@@ -27,14 +28,14 @@ app:
 
 db:
   mongo:
-    # host/user/pass/uri come from Fly secrets (custom-environment-variables.yaml).
-    # database is here for completeness; an Atlas URI (follow-up F1) carries its own.
+    # db.mongo.uri comes from the NODE_CONFIG secret.
+    # database is here for completeness; the Atlas URI carries its own.
     database: trinket
   redis:
     enabled: true
     app:
-      # host/pass come from Fly secrets; Fly managed Redis (Upstash) private
-      # endpoint is plaintext :6379 over the private network.
+      # host/pass come from the NODE_CONFIG secret; Fly managed Redis (Upstash)
+      # private endpoint is plaintext :6379 over the private network.
       port: 6379
 
 aws:

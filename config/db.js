@@ -13,7 +13,8 @@ var read_creds = dbconfig.mongoread.user && dbconfig.mongoread.pass
 function connect() {
   // A full connection string (mongodb+srv://, TLS, replicaSet — required by
   // MongoDB Atlas) can't be expressed through the piecewise host/port/database
-  // config below. Set via the MONGODB_URI env var (custom-environment-variables.yaml).
+  // config below. Set db.mongo.uri via the $NODE_CONFIG JSON env var (the
+  // override mechanism config@0.4.x supports; see fly/README.md).
   if (dbconfig.mongo.uri) {
     mongoose.connect(dbconfig.mongo.uri);
     return;

@@ -7,9 +7,10 @@ var awsConfig = {
   , region          : config.aws.region
 };
 
-// S3-compatible storage (Tigris on Fly): custom endpoint via the
-// AWS_ENDPOINT_URL_S3 env var (custom-environment-variables.yaml).
-if (config.has('aws.endpoint') && config.aws.endpoint) {
+// S3-compatible storage (Tigris on Fly): custom endpoint via aws.endpoint,
+// set through the $NODE_CONFIG JSON env var (see fly/README.md).
+// NB config@0.4.x has no .has(); plain property access only.
+if (config.aws && config.aws.endpoint) {
   awsConfig.endpoint = config.aws.endpoint;
 }
 

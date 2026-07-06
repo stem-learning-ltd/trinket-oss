@@ -45,7 +45,7 @@ CONFIGS := $(FLY_DIR)/fly.app.toml \
            $(FLY_DIR)/fly.pygame-manager.toml \
            $(FLY_DIR)/fly.pygame-worker.toml
 
-.PHONY: help validate apps-create flycast redis storage secrets-app secrets-tigris \
+.PHONY: help validate apps-create flycast redis storage secrets-app \
         deploy deploy-app deploy-exec deploy-python3-manager deploy-python3-shell \
         deploy-pygame-manager deploy-pygame-worker scale certs status bootstrap
 
@@ -59,8 +59,7 @@ help:
 	@echo "  flycast          allocate private IPv6 on the four internal apps (BEFORE first deploy)"
 	@echo "  redis            create Fly managed Redis ($(REDIS_NAME))"
 	@echo "  storage          create Tigris buckets ($(TIGRIS_UPLOADS), $(TIGRIS_GENERATED))"
-	@echo "  secrets-app      set core secrets on $(APP_MAIN) (from env vars)"
-	@echo "  secrets-tigris   set Tigris S3 creds on $(APP_MAIN) (from env vars)"
+	@echo "  secrets-app      compose the NODE_CONFIG secret on $(APP_MAIN) (from env vars)"
 	@echo "  deploy           deploy all six apps in dependency order"
 	@echo "  scale            seed Machine counts (app=2, shells=3)"
 	@echo "  certs            add TLS certs for $(HOST_MAIN) and $(HOST_EXEC)"
@@ -101,25 +100,28 @@ storage:
 
 ## ---------- secrets (main app only — execution apps stay credential-free) ----------
 
+# The app pins config@0.4.x, which predates custom-environment-variables
+# support — individual env vars never reach the config tree. What 0.4.x DOES
+# support is a single $NODE_CONFIG env var of JSON, deep-merged over the yaml
+# files. So all app secrets ship as ONE Fly secret, composed here with jq
+# (which also handles quoting/escaping of arbitrary passwords).
+# Tigris AWS_* vars are optional at first run; re-run this target with them
+# exported when enabling uploads.
 secrets-app:
+	@command -v jq >/dev/null  || { echo "jq is required to compose NODE_CONFIG"; exit 1; }
 	@test -n "$$MONGODB_URI"    || { echo "MONGODB_URI not set (Atlas connection string)"; exit 1; }
 	@test -n "$$SESSION_SECRET" || { echo "SESSION_SECRET not set (32+ random chars)"; exit 1; }
 	@test -n "$$REDIS_HOST"     || { echo "REDIS_HOST not set (fly-$(REDIS_NAME).upstash.io)"; exit 1; }
 	@test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD not set"; exit 1; }
-	$(FLY) secrets set -a $(APP_MAIN) \
-		MONGODB_URI="$$MONGODB_URI" \
-		SESSION_SECRET="$$SESSION_SECRET" \
-		REDIS_HOST="$$REDIS_HOST" \
-		REDIS_PASSWORD="$$REDIS_PASSWORD"
-
-secrets-tigris:
-	@test -n "$$AWS_ACCESS_KEY_ID"     || { echo "AWS_ACCESS_KEY_ID not set"; exit 1; }
-	@test -n "$$AWS_SECRET_ACCESS_KEY" || { echo "AWS_SECRET_ACCESS_KEY not set"; exit 1; }
-	@test -n "$$AWS_ENDPOINT_URL_S3"   || { echo "AWS_ENDPOINT_URL_S3 not set"; exit 1; }
-	$(FLY) secrets set -a $(APP_MAIN) \
-		AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
-		AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
-		AWS_ENDPOINT_URL_S3="$$AWS_ENDPOINT_URL_S3"
+	$(FLY) secrets set -a $(APP_MAIN) NODE_CONFIG="$$(jq -cn \
+		--arg uri  "$$MONGODB_URI" \
+		--arg sess "$$SESSION_SECRET" \
+		--arg rh   "$$REDIS_HOST" \
+		--arg rp   "$$REDIS_PASSWORD" \
+		--arg ak   "$${AWS_ACCESS_KEY_ID:-}" \
+		--arg as   "$${AWS_SECRET_ACCESS_KEY:-}" \
+		--arg ae   "$${AWS_ENDPOINT_URL_S3:-}" \
+		'{db: {mongo: {uri: $$uri}, redis: {app: {host: $$rh, pass: $$rp}}}, app: {plugins: {session: {cookieOptions: {password: $$sess}}}}, aws: {keyId: $$ak, key: $$as, endpoint: $$ae}}')"
 
 ## ---------- deploys ----------
 # --ha=false everywhere: flyctl otherwise creates 2 Machines per new app.
@@ -171,7 +173,7 @@ bootstrap:
 	@echo "  5. make redis                    # -> export REDIS_HOST, REDIS_PASSWORD"
 	@echo "  6. make storage                  # -> export AWS_* Tigris creds"
 	@echo "  7. Apply follow-up F1 (config/db.js Atlas URI patch) — required to boot"
-	@echo "  8. export SESSION_SECRET=... ; make secrets-app secrets-tigris"
+	@echo "  8. export SESSION_SECRET=... ; make secrets-app"
 	@echo "  9. make deploy"
 	@echo " 10. make scale"
 	@echo " 11. make certs                    # then create the DNS records it prints"
