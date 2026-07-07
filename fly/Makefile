@@ -53,6 +53,7 @@ help:
 	@echo "Read-only:"
 	@echo "  validate         fly config validate on all six fly.toml files"
 	@echo "  status           fly status across all apps"
+	@echo "  certs-check      cert validation progress for both hostnames"
 	@echo "Mutating (see fly/README.md for the full ordered runbook):"
 	@echo "  bootstrap        prints the first-time setup order"
 	@echo "  apps-create      create the six Fly apps"
@@ -96,7 +97,7 @@ storage:
 	$(FLY) storage create --name $(TIGRIS_UPLOADS) --org $(ORG)
 	$(FLY) storage create --name $(TIGRIS_GENERATED) --org $(ORG) --public
 	@echo ">> Copy AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_ENDPOINT_URL_S3"
-	@echo ">> from the output into your env, then run: make secrets-tigris"
+	@echo ">> from the output into your env, then (re)run: make secrets-app"
 
 ## ---------- secrets (main app only — execution apps stay credential-free) ----------
 
