@@ -440,6 +440,31 @@ gh release create frontend-components-v<X.Y.Z> public-components.tgz \
 make -C fly deploy-app
 ```
 
+## Cloudflare proxy (app hostname only)
+
+`trinket.stem.org.uk` is proxied through Cloudflare for WAF/bot protection.
+`exec.trinket.stem.org.uk` must stay **DNS-only forever** — it carries
+long-lived Socket.IO/noVNC WebSocket streams that don't tolerate a second
+proxy layer's idle timeouts.
+
+Required with the proxy on (all records DNS-only/grey):
+
+```
+CNAME  _acme-challenge.trinket.stem.org.uk → trinket.stem.org.uk.12okern.flydns.net.
+TXT    _fly-ownership.trinket.stem.org.uk  → app-12okern
+```
+
+Without the `_acme-challenge` CNAME, Fly cannot renew the cert it presents to
+Cloudflare (the hostname no longer resolves to Fly) and the origin leg breaks
+~3 months later. Get current values: `fly certs setup trinket.stem.org.uk -a stem-trinket-app`.
+
+Settings: SSL/TLS mode **Full (strict)** for this hostname (Fly always has a
+valid cert). Managed challenges CANNOT be solved inside third-party iframes —
+and embedded trinkets are the core use case — so test an embed from another
+origin and add a WAF skip rule for embed/static paths if it challenges.
+curl-based uptime probes on the custom domain will get challenge 403s; probe
+`stem-trinket-app.fly.dev` instead or add a skip rule.
+
 ## Security posture (untrusted student code)
 
 - **Isolation:** every Machine is a Firecracker microVM — that's the
