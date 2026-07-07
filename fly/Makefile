@@ -45,7 +45,7 @@ CONFIGS := $(FLY_DIR)/fly.app.toml \
            $(FLY_DIR)/fly.pygame-manager.toml \
            $(FLY_DIR)/fly.pygame-worker.toml
 
-.PHONY: help validate apps-create flycast redis storage secrets-app \
+.PHONY: help validate apps-create flycast redis storage secrets-app certs-check \
         deploy deploy-app deploy-exec deploy-python3-manager deploy-python3-shell \
         deploy-pygame-manager deploy-pygame-worker scale certs status bootstrap
 
@@ -169,7 +169,13 @@ scale:
 certs:
 	$(FLY) certs add $(HOST_MAIN) -a $(APP_MAIN)
 	$(FLY) certs add $(HOST_EXEC) -a $(APP_EXEC)
-	@echo ">> Create the DNS records shown above, then check: fly certs show $(HOST_MAIN) -a $(APP_MAIN)"
+	@echo ">> Create the DNS records shown above, then run: make certs-check"
+
+# Read-only. Plain `fly certs check <host>` fails outside a fly.toml dir —
+# the -a flag is required, which this target supplies.
+certs-check:
+	$(FLY) certs check $(HOST_MAIN) -a $(APP_MAIN)
+	$(FLY) certs check $(HOST_EXEC) -a $(APP_EXEC)
 
 bootstrap:
 	@echo "First-time setup order (each step detailed in fly/README.md):"
