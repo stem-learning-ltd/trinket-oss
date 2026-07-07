@@ -31,7 +31,9 @@ primary_region = "lhr"
   [[http_service.checks]]
     interval = "15s"
     timeout = "5s"
-    grace_period = "30s"
+    # Boot on shared-cpu-1x takes 60s+ (heavy synchronous requires + Mongo/
+    # Redis connects) — a shorter grace marks healthy boots as failing.
+    grace_period = "90s"
     method = "GET"
     path = "/"
 
