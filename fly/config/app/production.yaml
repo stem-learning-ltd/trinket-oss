@@ -6,14 +6,18 @@
 
 features:
   courses: true
-  # Uploads need the Tigris endpoint patch in config/aws.js first — flip to
-  # true after README follow-up F2 lands. Enabling it before that points the
-  # aws-sdk at real AWS S3, where these buckets don't exist.
+  # Uploads: flip to true once the Tigris secrets are set (the config/aws.js
+  # endpoint patch is applied on this branch).
   assets: false
-  python3: true
-  pygame: true
-  java: false
-  R: false
+  # NB trinket-type switches are NESTED under features.trinkets — a flat
+  # features.python3 is silently ignored (found the hard way).
+  trinkets:
+    python: true        # client-side Skulpt Python
+    html: true          # client-side HTML/CSS/JS
+    python3: true       # server-side, needs the python3 apps
+    pygame: true        # server-side, needs the pygame apps
+    java: false
+    R: false
 
 app:
   url:
