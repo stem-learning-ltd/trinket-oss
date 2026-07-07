@@ -386,6 +386,19 @@ apps whose inputs didn't change produce identical images.
 3. Deploy the affected app(s) per the table.
 4. Smoke-test (section above). `fly logs -a <app>` while a class-sized test runs.
 
+### Admin users
+
+GETTING_STARTED's docker command translates to `fly ssh console` (the machine
+env already carries NODE_CONFIG, so the script reaches Atlas):
+
+```sh
+fly ssh console -a stem-trinket-app -C \
+  "sh -c 'cd /usr/local/node/trinket && node scripts/make-admin.js <email-or-username>'"
+```
+
+The account must exist first. Either machine works — the role is written to
+the database.
+
 ### Rolling back
 
 Fly keeps prior images. Find the last good one and redeploy it by reference:
