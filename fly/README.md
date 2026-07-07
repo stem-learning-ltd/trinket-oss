@@ -328,21 +328,34 @@ redeploy the app. Upload paths to verify: `POST /file`, `POST /file/avatar`
 (`aws.lambda.createThumbnail`) doesn't exist on Fly — the config points
 thumbnails at the original asset host as a graceful fallback.
 
-### F3 — Python3 generated files (matplotlib images, HTML) to Tigris
+### F3 — ✅ APPLIED on fly-production: Python3 generated files to Tigris
 
-On the eval VM the manager wrote to a directory nginx served from a **shared
-volume**. Fly Volumes are per-Machine and unshared, and the manager doesn't
-serve these files itself, so today generated-image URLs would 404 — code
-execution and console output work; plots don't render.
+Why: on the eval VM the manager wrote to a directory nginx served from a
+shared volume; Fly Volumes are per-Machine, so generated-image URLs 404'd.
 
-Change `serverside/python/manager/manager.js` (~lines 218–249, where it writes
-to `configManager.generatedDir` and builds `data.url` from
-`configManager.generatedUrl`) to `PutObject` the file to the
-`stem-trinket-generated` bucket under `python3/<dir>/<name>` instead of the
-local write. `generatedUrl` in `fly.python3-manager.toml` already points at
-the bucket's public URL, so `data.url` construction is unchanged. The
-manager's local-directory cleanup job becomes redundant for uploaded files —
-set a Tigris lifecycle rule (expire after 24h) to match.
+What's in place: `serverside/python/manager/storage.js` uploads to the bucket
+when `manager.s3.bucket` is configured (set in `fly.python3-manager.toml`'s
+NODE_CONFIG, with `prefix: python3` matching `generatedUrl`'s path); the
+local-write path remains for docker-compose dev. Credentials come from the
+standard `AWS_*` env vars as Fly secrets on the **manager only** — a key
+scoped to the generated bucket, per the security posture.
+
+To activate (one-time ops):
+
+```sh
+fly storage dashboard stem-trinket-generated   # -> Access Keys -> create key,
+                                               #    Editor on THIS bucket only
+export GEN_AWS_ACCESS_KEY_ID='tid_...'
+export GEN_AWS_SECRET_ACCESS_KEY='tsec_...'
+make -C fly secrets-python3-manager
+make -C fly deploy-python3-manager
+```
+
+Then in the Tigris dashboard set an object lifecycle/expiry rule (~1 day) on
+the bucket — the manager's local cleanup job is disabled on Fly since nothing
+is written locally. Verify with a matplotlib trinket: the plot should render,
+and its image URL should be
+`https://stem-trinket-generated.fly.storage.tigris.dev/python3/<dir>/<file>`.
 
 ### F4 — Pygame generated files, same change
 

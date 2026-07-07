@@ -7,6 +7,7 @@ import isSvg from 'is-svg';
 import { mkdir, writeFile, readdir, stat, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import config from 'config';
+import { storageEnabled, putGenerated } from './storage.js';
 
 /**
  * Cleanup old generated files to prevent disk space exhaustion.
@@ -219,8 +220,13 @@ io.on("connection", (browser) => {
           const filepath = `${imagepath}/${data.name}`;
 
           try {
-            await mkdir(imagepath, { recursive: true });
-            await writeFile(filepath, data.buffer);
+            if (storageEnabled()) {
+              await putGenerated(`${imagedir}/${data.name}`, data.buffer,
+                data.type ? data.type.mime : 'image/svg+xml');
+            } else {
+              await mkdir(imagepath, { recursive: true });
+              await writeFile(filepath, data.buffer);
+            }
           } catch(addErr) {
             console.log('addErr:', addErr);
           }
@@ -240,8 +246,13 @@ io.on("connection", (browser) => {
           const filepath = `${htmlpath}/${data.name}`;
 
           try {
-            await mkdir(htmlpath, { recursive: true });
-            await writeFile(filepath, data.buffer);
+            if (storageEnabled()) {
+              await putGenerated(`${htmldir}/${data.name}`, data.buffer,
+                'text/html; charset=utf-8');
+            } else {
+              await mkdir(htmlpath, { recursive: true });
+              await writeFile(filepath, data.buffer);
+            }
           } catch(addErr) {
             console.log('addErr:', addErr);
           }

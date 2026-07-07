@@ -19,12 +19,18 @@ primary_region = "lhr"
   # generatedUrl -> public Tigris URL. Becomes live once the manager uploads
   #                 generated files to Tigris (README follow-up F3); until
   #                 then matplotlib image/HTML output will 404.
+  # s3.bucket enables the Tigris upload path in storage.js; the AWS_* creds
+  # are Fly SECRETS on this app (bucket-scoped key — see make secrets-python3-manager).
+  # cleanup is disabled because nothing is written locally; expiry of old
+  # generated files is a Tigris lifecycle rule on the bucket instead.
   NODE_CONFIG = """
   {
     "shells": ["http://stem-trinket-python3-shell.flycast:8010"],
     "manager": {
       "corsOrigins": ["https://trinket.stem.org.uk"],
-      "generatedUrl": "https://stem-trinket-generated.fly.storage.tigris.dev/python3"
+      "generatedUrl": "https://stem-trinket-generated.fly.storage.tigris.dev/python3",
+      "s3": { "bucket": "stem-trinket-generated", "prefix": "python3" },
+      "cleanup": { "enabled": false }
     }
   }
   """
