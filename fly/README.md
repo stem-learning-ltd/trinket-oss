@@ -357,6 +357,14 @@ is written locally. Verify with a matplotlib trinket: the plot should render,
 and its image URL should be
 `https://stem-trinket-generated.fly.storage.tigris.dev/python3/<dir>/<file>`.
 
+Tigris gotchas found during activation: the `--public` flag on
+`fly storage create` did NOT leave the bucket public — it had to be applied
+afterwards (`fly storage update stem-trinket-generated --public`, confirmed in
+the dashboard under Access and Sharing). And objects keep the access level
+from their upload time: anything uploaded while the bucket was private stays
+403 even after the bucket goes public. Verify with a fresh upload, not an old
+object.
+
 ### F4 — Pygame generated files, same change
 
 Same pattern in `serverside/pygame/manager/manager.js` (`GEN_DIR` / `GEN_URL`);
