@@ -29,6 +29,19 @@ app:
         # password (the session secret) comes from the SESSION_SECRET Fly secret
         isSecure: true
         domain: .trinket.stem.org.uk
+  # The execution stack lives on its own public hostname (cross-origin from
+  # the app page — hence corsOrigins on the managers). The frontend derives
+  # the Socket.IO path from these URLs: /python3/socket.io/, /pygame/socket.io/.
+  # NB nested under app — the embed template reads config.app.serverside.*;
+  # a top-level serverside: block is silently ignored (found the hard way,
+  # same trap as features.trinkets).
+  serverside:
+    python3:
+      api:
+        default: 'https://exec.trinket.stem.org.uk/python3'
+    pygame:
+      api:
+        default: 'https://exec.trinket.stem.org.uk/pygame'
 
 db:
   mongo:
@@ -66,13 +79,3 @@ aws:
       name: stem-trinket-uploads
       host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
 
-serverside:
-  # The execution stack lives on its own public hostname (cross-origin from the
-  # app page — hence corsOrigins on the managers). The frontend derives the
-  # Socket.IO path from these URLs: /python3/socket.io/, /pygame/socket.io/.
-  python3:
-    api:
-      default: 'https://exec.trinket.stem.org.uk/python3'
-  pygame:
-    api:
-      default: 'https://exec.trinket.stem.org.uk/pygame'
