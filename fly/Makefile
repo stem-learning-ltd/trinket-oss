@@ -121,7 +121,12 @@ secrets-app:
 		--arg ak   "$${AWS_ACCESS_KEY_ID:-}" \
 		--arg as   "$${AWS_SECRET_ACCESS_KEY:-}" \
 		--arg ae   "$${AWS_ENDPOINT_URL_S3:-}" \
-		'{db: {mongo: {uri: $$uri}, redis: {app: {host: $$rh, pass: $$rp}}}, app: {plugins: {session: {cookieOptions: {password: $$sess}}}}, aws: {keyId: $$ak, key: $$as, endpoint: $$ae}}')"
+		'{db: {mongo: {uri: $$uri}, redis: {app: {host: $$rh, pass: $$rp}, exports: {host: $$rh, password: $$rp}, sandbox: {host: $$rh, pass: $$rp, password: $$rp}}}, app: {plugins: {session: {cookieOptions: {password: $$sess}}}}, aws: {keyId: $$ak, key: $$as, endpoint: $$ae}}')"
+# ^ default.yaml defines THREE redis configs (app/exports/sandbox) and the Bull
+#   exports queue reads db.redis.exports directly — localhost unless overridden
+#   (its ECONNREFUSED is fatal). Key spelling differs by consumer: the app
+#   client (config/redis.js, lib/util/store.js) reads `pass`, Bull queues
+#   (lib/util/queues.js) read `password`.
 
 ## ---------- deploys ----------
 # --ha=false everywhere: flyctl otherwise creates 2 Machines per new app.
