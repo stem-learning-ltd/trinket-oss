@@ -36,6 +36,10 @@ RUN curl -L --silent -o ./public-components.tgz \
 
 RUN npm install --legacy-peer-deps
 
+# Compile SCSS -> public/css/{base,embed}.css (vite). The repo ships no
+# prebuilt CSS and no Dockerfile ran this — pages render unstyled without it.
+RUN npm run build
+
 # Fly config overlay. config@0.4.x load order (later wins):
 # default.yaml < production.yaml < $NODE_CONFIG (JSON env var, set as a Fly secret)
 RUN cp fly/config/app/production.yaml config/production.yaml
