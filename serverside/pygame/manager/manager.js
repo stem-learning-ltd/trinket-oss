@@ -141,12 +141,12 @@ function connectToWorker(browserId) {
   workerSocket.on('connect', () => {
     console.log(`Worker connected for ${browserId}`);
 
-    // Construct VNC URL from browser's host header, routed to this session's
-    // display: /pygame-vnc/<display>/websockify (exec nginx maps <display> to
-    // the worker's per-display websockify port).
+    // Construct VNC URL from browser's host header. The token selects this
+    // session's display; the worker's single token-multiplexing websockify
+    // routes it to display :<n>'s VNC.
     const host = conn.browserSocket.handshake.headers.host || 'localhost:8080';
     const protocol = conn.browserSocket.handshake.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
-    const rfbUrl = `${protocol}://${host}${VNC_PATH}/${conn.display}/websockify`;
+    const rfbUrl = `${protocol}://${host}${VNC_PATH}/websockify?token=display${conn.display}`;
 
     // Tell browser the instance is ready with VNC URL
     conn.browserSocket.emit('instance ready', {

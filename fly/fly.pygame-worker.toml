@@ -26,10 +26,6 @@ primary_region = "lhr"
 
 # Socket.IO shell — reached by the pygame manager via
 # stem-trinket-pygame-worker.flycast:8010 (flycast so a stopped worker wakes).
-# The per-display noVNC ports (6081..608N) are NOT declared as services: the
-# exec nginx reaches them via .internal (6PN direct), which is fine because the
-# manager's :8010 connection has already woken and is holding the Machine up
-# for the duration of the session.
 [[services]]
   protocol = "tcp"
   internal_port = 8010
@@ -51,7 +47,33 @@ primary_region = "lhr"
   [[services.tcp_checks]]
     interval = "15s"
     timeout = "5s"
-    # supervisord brings up N× Xvfb + VNC + websockify + the node shell.
+    # supervisord brings up N× Xvfb + VNC + the token websockify + node shell.
+    grace_period = "60s"
+
+# noVNC token-multiplexing websockify — reached from exec's /pygame-vnc/
+# location via stem-trinket-pygame-worker.flycast:6080. flycast (not .internal:
+# nginx's resolver can't resolve .internal here) and it wakes the worker too.
+# ONE port regardless of PYGAME_DISPLAYS — the display is selected by the
+# ?token=display<n> query, so raising the display count needs no change here.
+[[services]]
+  protocol = "tcp"
+  internal_port = 6080
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 6080
+    handlers = []
+
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 30
+    hard_limit = 40
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
     grace_period = "60s"
 
 [[vm]]

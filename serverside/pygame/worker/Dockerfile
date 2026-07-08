@@ -77,9 +77,9 @@ ENV NODE_CONFIG_DIR=/app/config
 
 # Expose ports
 # 8010        - shell socket.io (flycast; wakes the worker)
-# 5901..590N  - VNC servers (internal)
-# 6081..608N  - noVNC WebSocket per display (reached via .internal from exec)
-EXPOSE 8010
+# 5901..590N  - VNC servers (internal to the Machine)
+# 6080        - single token-multiplexing noVNC websockify (flycast from exec)
+EXPOSE 8010 6080
 
 # Generate per-display supervisor programs (PYGAME_DISPLAYS), then run supervisord.
 CMD ["/usr/local/bin/entrypoint.sh"]

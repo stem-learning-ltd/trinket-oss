@@ -560,36 +560,40 @@ curl-based uptime probes on the custom domain will get challenge 403s; probe
 ### Pygame concurrency (multi-display on one worker)
 
 The pygame worker is a single Machine but runs **`PYGAME_DISPLAYS` X displays**
-(:1..:N), each with its own Xvnc + websockify (port 6080+n), plus one shell
-server on :8010. This gives N concurrent pygame sessions from one Machine
-without an autoscaler (the OSS default was a single display :1, so two sessions
-drew on the same screen — overlaid, flickering).
+(:1..:N), each its own Xvnc, plus **one** token-multiplexing websockify (:6080)
+and one shell server (:8010). This gives N concurrent pygame sessions from one
+Machine without an autoscaler (the OSS default was a single display :1, so two
+sessions drew on the same screen — overlaid, flickering). It's a stopgap;
+scaling past one worker is tracked in ENG-1906.
 
 How a session maps to a display:
 - The **manager** keeps a pool of display indices. On each browser connect it
   claims a free one, hands the browser a noVNC URL of
-  `/pygame-vnc/<n>/websockify`, and passes `display: n` in every `eval` so the
-  worker renders that run on `:n`. On disconnect the index returns to the pool.
-  When all N are busy, the manager emits `busy` (+ a legacy `shell connect
-  error`) instead of overlaying — the user gets "try again shortly".
-- The **worker** `entrypoint.sh` generates N Xvnc + N websockify supervisor
-  programs from `PYGAME_DISPLAYS`; the shell spawns each run with
-  `DISPLAY=:n` from the eval payload.
-- **exec nginx** routes `/pygame-vnc/<n>/` to the worker's websockify port
-  6080+n over `.internal` (see below).
+  `/pygame-vnc/websockify?token=display<n>`, and passes `display: n` in every
+  `eval` so the worker renders that run on `:n`. On disconnect the index
+  returns to the pool. When all N are busy it emits `busy` (+ a legacy `shell
+  connect error`) instead of overlaying — the user gets "try again shortly".
+- The **worker** `entrypoint.sh` generates N Xvnc programs and a token file
+  (`display<n>: localhost:590<n>`) from `PYGAME_DISPLAYS`; the shell spawns
+  each run with `DISPLAY=:n` from the eval payload.
+- **exec nginx** proxies `/pygame-vnc/` to the worker's single websockify
+  (`.flycast:6080`); websockify reads `?token=display<n>` and routes to that
+  display's VNC.
+
+A **single VNC port with token routing** (not one port per display) means the
+display count lives entirely in `PYGAME_DISPLAYS` — raising it needs **no**
+fly.toml service blocks and **no** exec nginx changes.
 
 **`PYGAME_DISPLAYS` (worker) and `manager.displays` (manager NODE_CONFIG) MUST
-match** — both are 4. To change capacity: update both, size the worker VM to
-match (~0.5–1GB + real CPU per active session; currently shared-cpu-4x/4GB),
-and if raising above 8, extend the `$vnc_port` map in `config/exec/nginx.conf`.
+match** — both are 4. To change capacity: update both and size the worker VM to
+match (~0.5–1GB + real CPU per active session; currently shared-cpu-4x/4GB).
 Never `fly scale count` the worker above 1 — a second Machine would carry its
 own separate display pool the manager can't see.
 
-Why the VNC ports use `.internal`, not `.flycast`: the per-display websockify
-ports aren't declared as Fly services, and they don't need to be — the
-manager's `:8010` flycast connection has already woken the worker and holds it
-up for the whole session, so a direct 6PN (`.internal`) connection always
-finds it. This is safe *only* because the worker is a single Machine.
+Why flycast, not `.internal`: nginx's resolver answers `.flycast` but returns
+"Host not found" for `.internal` here (even though the shell's nslookup
+resolves it) — so VNC, like the manager Socket.IO paths, must use flycast.
+flycast also wakes the auto-stopped worker.
 
 ### Socket.IO over flycast needs websocket transport (no polling)
 
