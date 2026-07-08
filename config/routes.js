@@ -339,7 +339,10 @@ routes = [
       auth: 'session',
       payload : {
         maxBytes  : 1048576 * 10, // 10MB
-        output : 'file'
+        output : 'file',
+        // Hapi 20 disables multipart parsing by default and returns 415 for
+        // multipart/form-data without this — which is how browsers post uploads.
+        multipart : true
       },
       validate : {
         payload : {
@@ -355,7 +358,8 @@ routes = [
       auth: 'session',
       payload : {
         maxBytes  : 1048576 * 5, // 5MB
-        output: 'file'
+        output: 'file',
+        multipart : true
       },
       validate : {
         payload : {
