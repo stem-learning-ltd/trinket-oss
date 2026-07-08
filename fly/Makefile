@@ -47,7 +47,7 @@ CONFIGS := $(FLY_DIR)/fly.app.toml \
            $(FLY_DIR)/fly.pygame-manager.toml \
            $(FLY_DIR)/fly.pygame-worker.toml
 
-.PHONY: help validate apps-create flycast redis storage secrets-app secrets-python3-manager certs-check \
+.PHONY: help validate apps-create flycast redis storage secrets-app secrets-python3-manager secrets-pygame-manager certs-check \
         deploy deploy-app deploy-exec deploy-python3-manager deploy-python3-shell \
         deploy-pygame-manager deploy-pygame-worker scale certs status bootstrap
 
@@ -63,7 +63,8 @@ help:
 	@echo "  redis            create Fly managed Redis ($(REDIS_NAME))"
 	@echo "  storage          create Tigris buckets ($(TIGRIS_UPLOADS), $(TIGRIS_GENERATED))"
 	@echo "  secrets-app      compose the NODE_CONFIG secret on $(APP_MAIN) (from env vars)"
-	@echo "  secrets-python3-manager  bucket-scoped Tigris key for generated files"
+	@echo "  secrets-python3-manager  bucket-scoped Tigris key on the python3 manager"
+	@echo "  secrets-pygame-manager   bucket-scoped Tigris key on the pygame manager"
 	@echo "  deploy           deploy all six apps in dependency order"
 	@echo "  scale            seed Machine counts (app=2, shells=3)"
 	@echo "  certs            add TLS certs for $(HOST_MAIN) and $(HOST_EXEC)"
@@ -134,15 +135,25 @@ secrets-app:
 #   IPv4-only by default and fly-*.upstash.io is AAAA-only (guaranteed
 #   ENOTFOUND otherwise).
 
-# The python3 manager uploads generated files (matplotlib images, HTML) to
-# Tigris. Give it a key scoped to $(TIGRIS_GENERATED) ONLY: fly storage
-# dashboard $(TIGRIS_GENERATED) -> Access Keys -> create with Editor on that
-# bucket. Do NOT reuse the org-wide key from `make storage`. GEN_-prefixed
-# env names so the two key pairs can't be mixed up.
+# The managers upload generated files (matplotlib images, HTML) to Tigris.
+# Give them a key scoped to $(TIGRIS_GENERATED) ONLY: fly storage dashboard
+# $(TIGRIS_GENERATED) -> Access Keys -> create with Editor on that bucket. Do
+# NOT reuse the org-wide key from `make storage`. GEN_-prefixed env names so
+# the two key pairs can't be mixed up. Both managers share one bucket (with
+# different prefixes: python3/ and pygame/), so the SAME key works for both.
 secrets-python3-manager:
 	@test -n "$$GEN_AWS_ACCESS_KEY_ID"     || { echo "GEN_AWS_ACCESS_KEY_ID not set (bucket-scoped Tigris key)"; exit 1; }
 	@test -n "$$GEN_AWS_SECRET_ACCESS_KEY" || { echo "GEN_AWS_SECRET_ACCESS_KEY not set"; exit 1; }
 	$(FLY) secrets set -a $(APP_PY3_MGR) \
+		AWS_ACCESS_KEY_ID="$$GEN_AWS_ACCESS_KEY_ID" \
+		AWS_SECRET_ACCESS_KEY="$$GEN_AWS_SECRET_ACCESS_KEY" \
+		AWS_ENDPOINT_URL_S3="$${AWS_ENDPOINT_URL_S3:-https://fly.storage.tigris.dev}" \
+		AWS_REGION="auto"
+
+secrets-pygame-manager:
+	@test -n "$$GEN_AWS_ACCESS_KEY_ID"     || { echo "GEN_AWS_ACCESS_KEY_ID not set (bucket-scoped Tigris key)"; exit 1; }
+	@test -n "$$GEN_AWS_SECRET_ACCESS_KEY" || { echo "GEN_AWS_SECRET_ACCESS_KEY not set"; exit 1; }
+	$(FLY) secrets set -a $(APP_PG_MGR) \
 		AWS_ACCESS_KEY_ID="$$GEN_AWS_ACCESS_KEY_ID" \
 		AWS_SECRET_ACCESS_KEY="$$GEN_AWS_SECRET_ACCESS_KEY" \
 		AWS_ENDPOINT_URL_S3="$${AWS_ENDPOINT_URL_S3:-https://fly.storage.tigris.dev}" \

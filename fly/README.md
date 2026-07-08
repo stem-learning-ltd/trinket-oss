@@ -371,11 +371,31 @@ object — which looks exactly like a permissions problem and sent us chasing
 bucket ACLs for hours. The bucket was public all along; the URL host was
 wrong. Always confirm the serving host against the dashboard's object URL.
 
-### F4 — Pygame generated files, same change
+### F4 — ✅ APPLIED on fly-production: Pygame generated files to Tigris
 
-Same pattern in `serverside/pygame/manager/manager.js` (`GEN_DIR` / `GEN_URL`);
-`genUrl` in `fly.pygame-manager.toml` already points at
-`.../pygame`. (Live gameplay itself streams over VNC and needs nothing here.)
+Same treatment as F3, ported to the pygame manager: `serverside/pygame/manager/`
+gets the same `storage.js`, uploads via `manager.s3` (set in
+`fly.pygame-manager.toml`, `prefix: pygame`), and the same ordered-`pending`
+guard so a program that saves a file just before exiting delivers it before
+the browser disconnects. (Live gameplay streams over VNC and needs none of
+this — F4 only matters for pygame code that writes image/HTML files.)
+
+NB the pygame manager Dockerfile copies files individually, so `storage.js`
+had to be added to it explicitly (unlike the python3 manager's `COPY . .`).
+
+To activate — reuse the SAME bucket-scoped key as F3 (both managers write to
+`stem-trinket-generated`, different prefixes):
+
+```sh
+export GEN_AWS_ACCESS_KEY_ID='tid_...'          # same key as secrets-python3-manager
+export GEN_AWS_SECRET_ACCESS_KEY='tsec_...'
+make -C fly secrets-pygame-manager
+make -C fly deploy-pygame-manager
+```
+
+Verify with a pygame trinket that saves an image (e.g.
+`pygame.image.save(screen, "out.png")`): the file resolves at
+`https://stem-trinket-generated.t3.tigrisfiles.io/pygame/<dir>/out.png`.
 
 ### F5 — Nice-to-have: real health endpoints
 

@@ -10,6 +10,7 @@ RUN npm install --production
 
 # Copy application code
 COPY manager.js ./
+COPY storage.js ./
 COPY config/ ./config/
 
 # Create generated files directory

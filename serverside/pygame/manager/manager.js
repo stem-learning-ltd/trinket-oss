@@ -15,6 +15,7 @@ import isSvg from 'is-svg';
 import { mkdir, writeFile as fsWriteFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import config from 'config';
+import { storageEnabled, putGenerated } from './storage.js';
 
 const PORT = config.get('manager.port');
 const HOST = config.get('manager.host');
@@ -100,11 +101,14 @@ try {
  */
 async function writeGeneratedFile(data, opts) {
   const dirname = Math.random().toString(36).slice(-8);
-  const filedir = join(GEN_DIR, dirname);
-  const filepath = join(filedir, data.name);
 
-  await mkdir(filedir, { recursive: true });
-  await fsWriteFile(filepath, data.buffer);
+  if (storageEnabled()) {
+    await putGenerated(`${dirname}/${data.name}`, data.buffer, opts.contentType);
+  } else {
+    const filedir = join(GEN_DIR, dirname);
+    await mkdir(filedir, { recursive: true });
+    await fsWriteFile(join(filedir, data.name), data.buffer);
+  }
 
   data.url = `${GEN_URL}/${dirname}/${data.name}`;
   data[opts.type] = true;
@@ -166,36 +170,42 @@ function connectToWorker(browserId) {
     conn.browserSocket.emit('script error', { error: data.error });
   });
 
-  workerSocket.on('file added', async (data) => {
-    try {
-      // Determine file type
-      const type = await fileTypeFromBuffer(data.buffer);
+  // Enqueued onto conn.pending so uploads/relays stay ordered and 'exit' can
+  // wait for them (see the connection setup comment).
+  workerSocket.on('file added', (data) => {
+    conn.pending = conn.pending.then(async () => {
+      try {
+        // Determine file type
+        const type = await fileTypeFromBuffer(data.buffer);
 
-      if ((type && /^image/.test(type.mime)) || isSvg(data.buffer)) {
-        await writeGeneratedFile(data, { type: 'image' });
-      } else if (type) {
-        // Binary file
-        data.binary = true;
-      } else if (/\.html$/.test(data.name)) {
-        await writeGeneratedFile(data, { type: 'html' });
-      } else {
-        // Text file
-        data.content = data.buffer.toString('utf8');
+        if ((type && /^image/.test(type.mime)) || isSvg(data.buffer)) {
+          await writeGeneratedFile(data, { type: 'image', contentType: type ? type.mime : 'image/svg+xml' });
+        } else if (type) {
+          // Binary file
+          data.binary = true;
+        } else if (/\.html$/.test(data.name)) {
+          await writeGeneratedFile(data, { type: 'html', contentType: 'text/html; charset=utf-8' });
+        } else {
+          // Text file
+          data.content = data.buffer.toString('utf8');
+        }
+      } catch (e) {
+        console.error('File type detection error:', e);
+        data.typeError = e.message;
       }
-    } catch (e) {
-      console.error('File type detection error:', e);
-      data.typeError = e.message;
-    }
 
-    delete data.buffer;
-    conn.browserSocket.emit('file added', data);
+      delete data.buffer;
+      conn.browserSocket.emit('file added', data);
+    }).catch((e) => console.log('file added error:', e));
   });
 
-  workerSocket.on('done', (result) => {
+  workerSocket.on('done', async (result) => {
+    await conn.pending;
     conn.browserSocket.emit('done', result);
   });
 
-  workerSocket.on('exit', () => {
+  workerSocket.on('exit', async () => {
+    await conn.pending;
     conn.browserSocket.emit('exit');
   });
 
@@ -219,7 +229,13 @@ io.on('connection', (browser) => {
   connections[browserId] = {
     browserSocket: browser,
     workerSocket: null,
-    ready: false
+    ready: false,
+    // Ordered queue of async 'file added' work (upload to object storage,
+    // then relay). 'exit'/'done'/'disconnect' await it so a program that ends
+    // right after emitting a file can't disconnect the browser before the
+    // file — and its upload — is delivered. See the python3 manager for the
+    // full rationale; the race is identical.
+    pending: Promise.resolve()
   };
 
   // Connect to worker immediately (local mode - always available)
