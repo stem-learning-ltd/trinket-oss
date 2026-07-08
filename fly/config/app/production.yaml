@@ -64,18 +64,18 @@ aws:
   buckets:
     userassets:
       name: stem-trinket-uploads
-      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      host: 'https://stem-trinket-uploads.t3.tigrisfiles.io'
       thumbnail: 'thumb-%{s}'
       # No Lambda on Fly: thumbnails fall back to the original asset host.
-      thumbnailHost: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      thumbnailHost: 'https://stem-trinket-uploads.t3.tigrisfiles.io'
       thumbnailBucket: stem-trinket-uploads
     snapshots:
       name: stem-trinket-uploads
-      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      host: 'https://stem-trinket-uploads.t3.tigrisfiles.io'
     materials:
       name: stem-trinket-uploads
-      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      host: 'https://stem-trinket-uploads.t3.tigrisfiles.io'
     useravatars:
       name: stem-trinket-uploads
-      host: 'https://stem-trinket-uploads.fly.storage.tigris.dev'
+      host: 'https://stem-trinket-uploads.t3.tigrisfiles.io'
 

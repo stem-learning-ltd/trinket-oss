@@ -355,15 +355,21 @@ Then in the Tigris dashboard set an object lifecycle/expiry rule (~1 day) on
 the bucket — the manager's local cleanup job is disabled on Fly since nothing
 is written locally. Verify with a matplotlib trinket: the plot should render,
 and its image URL should be
-`https://stem-trinket-generated.fly.storage.tigris.dev/python3/<dir>/<file>`.
+`https://stem-trinket-generated.t3.tigrisfiles.io/python3/<dir>/<file>`.
 
-Tigris gotchas found during activation: the `--public` flag on
-`fly storage create` did NOT leave the bucket public — it had to be applied
-afterwards (`fly storage update stem-trinket-generated --public`, confirmed in
-the dashboard under Access and Sharing). And objects keep the access level
-from their upload time: anything uploaded while the bucket was private stays
-403 even after the bucket goes public. Verify with a fresh upload, not an old
-object.
+Tigris has TWO hostnames and they are NOT interchangeable — the single most
+time-consuming gotcha here:
+- **S3 API endpoint** `https://fly.storage.tigris.dev` — for the SDK
+  (`AWS_ENDPOINT_URL_S3`, PutObject/GetObject). Authenticated only.
+- **Public file-serving** `https://<bucket>.t3.tigrisfiles.io/<key>` — the
+  anonymous browser-facing URL. This is what `generatedUrl`/`genUrl` and the
+  uploads `host` values must use. The Tigris dashboard shows the correct
+  serving URL under an object's details; copy it from there.
+
+An anonymous GET to the *API* host returns AccessDenied even for a public
+object — which looks exactly like a permissions problem and sent us chasing
+bucket ACLs for hours. The bucket was public all along; the URL host was
+wrong. Always confirm the serving host against the dashboard's object URL.
 
 ### F4 — Pygame generated files, same change
 

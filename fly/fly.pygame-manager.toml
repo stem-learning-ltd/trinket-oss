@@ -21,7 +21,7 @@ primary_region = "lhr"
     "manager": {
       "workerUrl": "http://stem-trinket-pygame-worker.flycast:8010",
       "corsOrigins": ["https://trinket.stem.org.uk"],
-      "genUrl": "https://stem-trinket-generated.fly.storage.tigris.dev/pygame"
+      "genUrl": "https://stem-trinket-generated.t3.tigrisfiles.io/pygame"
     }
   }
   """
