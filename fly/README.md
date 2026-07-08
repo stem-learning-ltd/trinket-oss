@@ -585,10 +585,33 @@ display count lives entirely in `PYGAME_DISPLAYS` — raising it needs **no**
 fly.toml service blocks and **no** exec nginx changes.
 
 **`PYGAME_DISPLAYS` (worker) and `manager.displays` (manager NODE_CONFIG) MUST
-match** — both are 4. To change capacity: update both and size the worker VM to
-match (~0.5–1GB + real CPU per active session; currently shared-cpu-4x/4GB).
-Never `fly scale count` the worker above 1 — a second Machine would carry its
-own separate display pool the manager can't see.
+match.** Never `fly scale count` the worker above 1 — a second Machine would
+carry its own separate display pool the manager can't see.
+
+#### Raising the stopgap limit (how-to)
+
+To increase how many students can run pygame at once (bounded by one Machine —
+genuine multi-class scale is ENG-1906):
+
+1. Pick the new number `N` and a VM to fit it. Budget roughly **0.5–1 GB RAM
+   and a meaningful share of a CPU per concurrent session** (a running game is
+   a continuous process). Rough guide: performance-4x/8GB ≈ 8–12, performance-8x/16GB
+   ≈ 16–24 — **confirm by load-testing**, games vary a lot.
+2. Edit two values, keeping them identical:
+   - `fly/fly.pygame-worker.toml` → `[env]` `PYGAME_DISPLAYS = "N"` (and bump
+     `[[vm]]` `size`/`memory` if needed)
+   - `fly/fly.pygame-manager.toml` → `NODE_CONFIG` `manager.displays: N`
+3. Deploy the two apps (exec needs **no** change — the single token-routed VNC
+   port is display-count-agnostic):
+   ```sh
+   make -C fly deploy-pygame-worker deploy-pygame-manager
+   ```
+4. Load-test: open ~N pygame sessions and watch the worker's CPU
+   (`fly machine list`/metrics). If games stutter, lower `N` or use a bigger VM.
+
+There's a hard ceiling here — it's one Machine. Past what a single (large) VM
+can do, or once multiple classes/schools overlap, it needs the real scale-out
+in **ENG-1906** (spike browser-side WASM before building elastic autoscaling).
 
 Why flycast, not `.internal`: nginx's resolver answers `.flycast` but returns
 "Host not found" for `.internal` here (even though the shell's nslookup
