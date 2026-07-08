@@ -6,9 +6,10 @@
 
 features:
   courses: false
-  # Uploads: flip to true once the Tigris secrets are set (the config/aws.js
-  # endpoint patch is applied on this branch).
-  assets: false
+  # Uploads to Tigris (config/aws.js endpoint patch applied). Requires: the app
+  # holding a key that can write to stem-trinket-uploads, and that bucket being
+  # publicly readable so embedded <img> URLs resolve (ENG-1885).
+  assets: true
   # NB trinket-type switches are NESTED under features.trinkets — a flat
   # features.python3 is silently ignored (found the hard way).
   trinkets:
