@@ -5,7 +5,8 @@
     "workerUrl": "http://pygame-worker:8010",
     "genDir": "/tmp/pygame-generated",
     "genUrl": "/pygame-generated",
-    "vncPath": "/pygame-vnc/websockify",
+    "vncPath": "/pygame-vnc",
+    "displays": 4,
     "corsOrigins": true
   }
 }

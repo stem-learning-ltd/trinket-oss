@@ -18,13 +18,17 @@ primary_region = "lhr"
   # s3.bucket enables the Tigris upload path in storage.js; AWS_* creds are Fly
   # secrets on this app (same bucket-scoped key as python3 — see
   # make secrets-pygame-manager). prefix pygame matches genUrl's path.
+  # displays MUST equal the worker's PYGAME_DISPLAYS — the manager assigns a
+  # display :1..:displays per session; a mismatch would route a session to a
+  # display the worker isn't running.
   NODE_CONFIG = """
   {
     "manager": {
       "workerUrl": "http://stem-trinket-pygame-worker.flycast:8010",
       "corsOrigins": ["https://trinket.stem.org.uk"],
       "genUrl": "https://stem-trinket-generated.t3.tigrisfiles.io/pygame",
-      "s3": { "bucket": "stem-trinket-generated", "prefix": "pygame" }
+      "s3": { "bucket": "stem-trinket-generated", "prefix": "pygame" },
+      "displays": 4
     }
   }
   """

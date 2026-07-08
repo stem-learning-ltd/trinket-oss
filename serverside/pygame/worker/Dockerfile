@@ -55,8 +55,11 @@ RUN echo "" | vncpasswd -f > /home/trinket/.vnc/passwd \
     && chmod 600 /home/trinket/.vnc/passwd \
     && chown trinket:trinket /home/trinket/.vnc/passwd
 
-# Copy supervisor configs
+# Copy the static supervisor program (shell.conf); the per-display xvnc/novnc
+# programs are generated at container start by entrypoint.sh.
 COPY supervisor/ /etc/supervisor/conf.d/
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Create app directory
 WORKDIR /app
@@ -73,10 +76,10 @@ ENV DISPLAY=:1
 ENV NODE_CONFIG_DIR=/app/config
 
 # Expose ports
-# 8010 - Shell socket.io
-# 5901 - VNC (internal, proxied by noVNC)
-# 6080 - noVNC WebSocket
-EXPOSE 8010 6080
+# 8010        - shell socket.io (flycast; wakes the worker)
+# 5901..590N  - VNC servers (internal)
+# 6081..608N  - noVNC WebSocket per display (reached via .internal from exec)
+EXPOSE 8010
 
-# Start supervisor (manages Xvnc, noVNC, and can start shell.js)
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
+# Generate per-display supervisor programs (PYGAME_DISPLAYS), then run supervisord.
+CMD ["/usr/local/bin/entrypoint.sh"]

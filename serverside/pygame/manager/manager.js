@@ -24,6 +24,14 @@ const GEN_DIR = config.get('manager.genDir');
 const GEN_URL = config.get('manager.genUrl');
 const VNC_PATH = config.get('manager.vncPath');
 
+// The worker runs this many X displays (:1..:N), each with its own VNC stream.
+// MUST equal the worker's PYGAME_DISPLAYS. A session claims a free display so
+// concurrent games don't share a screen; when all are busy, new sessions are
+// turned away rather than overlaid.
+const DISPLAYS = config.has('manager.displays') ? config.get('manager.displays') : 4;
+const freeDisplays = [];
+for (let i = 1; i <= DISPLAYS; i++) freeDisplays.push(i);
+
 // Keep track of connections and stats
 const connections = {};
 const stats = {
@@ -133,10 +141,12 @@ function connectToWorker(browserId) {
   workerSocket.on('connect', () => {
     console.log(`Worker connected for ${browserId}`);
 
-    // Construct VNC URL from browser's host header
+    // Construct VNC URL from browser's host header, routed to this session's
+    // display: /pygame-vnc/<display>/websockify (exec nginx maps <display> to
+    // the worker's per-display websockify port).
     const host = conn.browserSocket.handshake.headers.host || 'localhost:8080';
     const protocol = conn.browserSocket.handshake.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
-    const rfbUrl = `${protocol}://${host}${VNC_PATH}`;
+    const rfbUrl = `${protocol}://${host}${VNC_PATH}/${conn.display}/websockify`;
 
     // Tell browser the instance is ready with VNC URL
     conn.browserSocket.emit('instance ready', {
@@ -226,10 +236,25 @@ io.on('connection', (browser) => {
   const browserId = browser.id;
   console.log(`Browser connected: ${browserId}`);
 
+  // Claim a free display. The worker runs a fixed pool (:1..:DISPLAYS); when
+  // all are in use, turn this session away with a clear message rather than
+  // overlaying it onto someone else's screen.
+  const display = freeDisplays.shift();
+  if (display === undefined) {
+    console.log(`No free pygame display for ${browserId} (all ${DISPLAYS} in use)`);
+    browser.emit('busy', { message: 'All pygame sessions are in use. Please try again shortly.' });
+    // Also emit shell connect error so older clients surface something.
+    browser.emit('shell connect error');
+    browser.emit('exit');
+    return;
+  }
+  console.log(`Assigned display :${display} to ${browserId} (${freeDisplays.length} free)`);
+
   connections[browserId] = {
     browserSocket: browser,
     workerSocket: null,
     ready: false,
+    display: display,
     // Ordered queue of async 'file added' work (upload to object storage,
     // then relay). 'exit'/'done'/'disconnect' await it so a program that ends
     // right after emitting a file can't disconnect the browser before the
@@ -238,7 +263,6 @@ io.on('connection', (browser) => {
     pending: Promise.resolve()
   };
 
-  // Connect to worker immediately (local mode - always available)
   connectToWorker(browserId);
 
   // Handle run request from browser
@@ -262,7 +286,8 @@ io.on('connection', (browser) => {
     conn.workerSocket.emit('eval', {
       interactive: false,
       init: true,
-      code: data.code
+      code: data.code,
+      display: conn.display
     });
   });
 
@@ -289,8 +314,15 @@ io.on('connection', (browser) => {
   browser.on('disconnect', () => {
     console.log(`Browser disconnected: ${browserId}`);
     const conn = connections[browserId];
-    if (conn && conn.workerSocket) {
-      conn.workerSocket.disconnect();
+    if (conn) {
+      if (conn.workerSocket) {
+        conn.workerSocket.disconnect();
+      }
+      // Return the display to the pool for the next session.
+      if (conn.display !== undefined) {
+        freeDisplays.push(conn.display);
+        console.log(`Released display :${conn.display} (${freeDisplays.length} free)`);
+      }
     }
     delete connections[browserId];
   });

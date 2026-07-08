@@ -5,7 +5,7 @@
  * Runs inside a container with Xvnc providing the display.
  */
 
-import { spawn, execSync } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import { mkdir, writeFile, rm, chmod } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
@@ -30,20 +30,20 @@ const io = new Server(PORT, {
 
 console.log(`Pygame shell listening on port ${PORT}`);
 
-// Reset display background
-function resetDisplay() {
+// Reset a specific display's background. Each concurrent session runs on its
+// own display (:1, :2, ...) so a reset must target only that one — clearing
+// :1 on every connect (the original behaviour) would wipe another session.
+// execFileSync (no shell) — display is an int, but avoid shell interpolation.
+function resetDisplay(display) {
   try {
-    execSync('xsetroot -display :1 -solid GhostWhite');
+    execFileSync('xsetroot', ['-display', `:${display}`, '-solid', 'GhostWhite']);
   } catch (e) {
     // Ignore errors if Xvnc not ready yet
   }
 }
 
-resetDisplay();
-
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  resetDisplay();
 
   let child = null;
   let sessionDir = null;
@@ -54,6 +54,12 @@ io.on('connection', (socket) => {
   // Handle code execution
   socket.on('eval', async (data) => {
     try {
+      // Which X display to render on — assigned by the manager per session so
+      // concurrent games don't share a screen. Defaults to :1 for the
+      // single-display / local-dev case.
+      const display = parseInt(data.display, 10) || 1;
+      resetDisplay(display);
+
       // Create session directory
       const hash = createHash('sha256');
       hash.update(Math.random().toString() + Date.now());
@@ -130,7 +136,7 @@ io.on('connection', (socket) => {
         const args = ['-u', '-B', join(sessionDir, 'main.py')];
         const options = {
           cwd: sessionDir,
-          env: { ...process.env, DISPLAY: ':1' }
+          env: { ...process.env, DISPLAY: `:${display}` }
         };
 
         child = spawn(PYTHON, args, options);

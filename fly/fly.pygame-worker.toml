@@ -1,23 +1,35 @@
-# stem-trinket-pygame-worker — the single pygame worker: shell (:8010) + noVNC (:6080).
+# stem-trinket-pygame-worker — the single pygame worker.
+# Runs PYGAME_DISPLAYS X displays (:1..:N), each with its own VNC + websockify,
+# plus one shell server on :8010 that renders each run on the display the
+# manager assigns. This gives N concurrent pygame sessions from ONE Machine.
 #
-# FIXED SCALE: exactly ONE Machine, ever. The OSS pygame manager is
-# single-worker by design — deploy with --ha=false (the Makefile does) and
-# never `fly scale count` this app above 1. Concurrency is capped below;
-# scale-to-zero covers idle cost instead of autoscaling.
+# FIXED SCALE: exactly ONE Machine, ever. Concurrency scales by DISPLAYS on the
+# single Machine, NOT by machine count — deploy with --ha=false (the Makefile
+# does) and never `fly scale count` this app above 1 (a second Machine would
+# have its own separate display pool the manager doesn't know about, and
+# .internal VNC routing would round-robin between them).
 #
 # PRIVATE + CREDENTIAL-FREE: untrusted student code runs here; no secrets on
 # this app, isolation is the Firecracker boundary (do not add gVisor).
 # Allocate flycast BEFORE first deploy: fly ips allocate-v6 --private -a stem-trinket-pygame-worker
-#
-# NB: env vars set here do NOT reach the shell process — supervisord launches
-# it with an explicit environment= list (supervisor/shell.conf). The worker
-# needs no env config, so that's fine; just don't try to configure it via [env].
 # Uses the stock Dockerfile at serverside/pygame/worker (that dir is the build context).
 app = "stem-trinket-pygame-worker"
 primary_region = "lhr"
 
+[env]
+  # Read by entrypoint.sh (the container CMD — unlike the shell process, the
+  # entrypoint DOES see [env]) to generate N display programs. MUST equal the
+  # manager's manager.displays (fly.pygame-manager.toml NODE_CONFIG). Raising
+  # this raises concurrent pygame capacity; size the VM to match (~0.5–1GB and
+  # meaningful CPU per active session).
+  PYGAME_DISPLAYS = "4"
+
 # Socket.IO shell — reached by the pygame manager via
 # stem-trinket-pygame-worker.flycast:8010 (flycast so a stopped worker wakes).
+# The per-display noVNC ports (6081..608N) are NOT declared as services: the
+# exec nginx reaches them via .internal (6PN direct), which is fine because the
+# manager's :8010 connection has already woken and is holding the Machine up
+# for the duration of the session.
 [[services]]
   protocol = "tcp"
   internal_port = 8010
@@ -30,40 +42,20 @@ primary_region = "lhr"
     handlers = []
 
   [services.concurrency]
-    # App/manager-layer cap for the single worker.
+    # One :8010 connection per active session; allow the full display pool
+    # (plus a little headroom for connect/disconnect overlap).
     type = "connections"
     soft_limit = 4
-    hard_limit = 6
+    hard_limit = 8
 
   [[services.tcp_checks]]
     interval = "15s"
     timeout = "5s"
-    # supervisord brings up Xvfb + VNC + websockify + the node shell.
-    grace_period = "60s"
-
-# noVNC / websockify stream — reached from stem-trinket-exec's /pygame-vnc/ location
-# via stem-trinket-pygame-worker.flycast:6080.
-[[services]]
-  protocol = "tcp"
-  internal_port = 6080
-  auto_stop_machines = "stop"
-  auto_start_machines = true
-  min_machines_running = 0
-
-  [[services.ports]]
-    port = 6080
-    handlers = []
-
-  [services.concurrency]
-    type = "connections"
-    soft_limit = 8
-    hard_limit = 10
-
-  [[services.tcp_checks]]
-    interval = "15s"
-    timeout = "5s"
+    # supervisord brings up N× Xvfb + VNC + websockify + the node shell.
     grace_period = "60s"
 
 [[vm]]
-  size = "shared-cpu-2x"
-  memory = "2gb"
+  # Sized for ~4 concurrent pygame sessions (each: an Xvfb + a python/pygame
+  # process). Scale this together with PYGAME_DISPLAYS.
+  size = "shared-cpu-4x"
+  memory = "4gb"
