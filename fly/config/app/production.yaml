@@ -5,7 +5,7 @@
 # deep-merged over config/default.yaml when NODE_ENV=production.
 
 features:
-  courses: true
+  courses: false
   # Uploads: flip to true once the Tigris secrets are set (the config/aws.js
   # endpoint patch is applied on this branch).
   assets: false
