@@ -29,6 +29,16 @@ app:
         # password (the session secret) comes from the SESSION_SECRET Fly secret
         isSecure: true
         domain: .trinket.stem.org.uk
+  embed:
+    # Serve Skulpt (the in-browser Python engine) from the app's own
+    # /components/skulpt/ instead of the default external CDN host
+    # (aws.buckets.cdn.host), which we don't configure — leaving it unset made
+    # the browser request an unresolvable host (ERR_NAME_NOT_RESOLVED) and
+    # client-side Python trinkets failed with "Sk is not defined". The files
+    # ship in the components bundle. min: use the minified copy.
+    skulpt:
+      local: true
+      min: true
   # The execution stack lives on its own public hostname (cross-origin from
   # the app page — hence corsOrigins on the managers). The frontend derives
   # the Socket.IO path from these URLs: /python3/socket.io/, /pygame/socket.io/.
