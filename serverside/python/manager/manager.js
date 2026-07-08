@@ -145,7 +145,14 @@ const getShellSocket = async () => {
     const shellClient = Client(shellUrl, {
       'forceNew' : true,
       'reconnectionAttempts' : 0,
-      'timeout' : 2000
+      // websocket only: shells sit behind a flycast load balancer with no
+      // session affinity, so long-polling breaks (handshake and follow-up
+      // requests hit different shell Machines -> "xhr post error"). A single
+      // websocket connection has no such requirement.
+      'transports' : ['websocket'],
+      // 2s was too tight: a flycast connection to a scaled-to-zero shell must
+      // wake a Firecracker Machine first (~seconds).
+      'timeout' : 10000
     });
 
     return new Promise((resolve, reject) => {

@@ -536,3 +536,17 @@ curl-based uptime probes on the custom domain will get challenge 403s; probe
 - To grow python3 capacity: `fly scale count N -a stem-trinket-python3-shell` and/or
   raise the per-shell `soft_limit`/`hard_limit` in `fly.python3-shell.toml`.
   Do **not** scale the pygame worker.
+
+### Socket.IO over flycast needs websocket transport (no polling)
+
+A flycast address load-balances across Machines with **no session affinity**.
+Socket.IO long-polling makes several separate HTTP requests per session; behind
+flycast they land on different Machines and the session breaks (`xhr post
+error` → the browser sees "Server connection lost"). The manager→shell client
+is therefore pinned to `transports: ['websocket']` (a single persistent
+connection — no affinity needed). Consequence for scaling: the
+**python3-manager must stay at 1 Machine** (`min_machines_running = 1`, not
+scaled up). If it were ever scaled >1, the *browser→manager* Socket.IO leg
+would hit the same polling problem, since the frontend's client isn't under our
+control to force websocket. Scale the shell pool freely — that leg is now
+websocket-only.
