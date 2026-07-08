@@ -171,6 +171,15 @@ const getShellSocket = async () => {
 io.on("connection", (browser) => {
   let shellSocket;
 
+  // Ordered queue of async 'file added' work (each entry uploads to object
+  // storage then relays to the browser). 'exit'/'done'/'disconnect' await
+  // this before relaying, so a program that ends right after emitting a file
+  // (e.g. matplotlib plt.show()) can't have the browser disconnect before the
+  // file — and its upload — has been delivered. Without this the file-added
+  // relay races the exit relay and, in non-interactive "Run" mode where the
+  // browser disconnects on exit, the image is silently dropped.
+  let pending = Promise.resolve();
+
   connections = connections + 1;
 
   const getSocket = async () => {
@@ -213,8 +222,10 @@ io.on("connection", (browser) => {
       });
     });
 
-    // a new file was added by the user code
-    shellSocket.on('file added', async (data) => {
+    // a new file was added by the user code. Enqueued onto `pending` so
+    // uploads/relays stay ordered and 'exit' can wait for them (see above).
+    shellSocket.on('file added', (data) => {
+      pending = pending.then(async () => {
       try {
         // try to determine what type of file was added
         data.type = await fileTypeFromBuffer(data.buffer);
@@ -278,21 +289,27 @@ io.on("connection", (browser) => {
       delete data.buffer;
 
       browser.emit('file added', data);
+      }).catch((e) => console.log('file added error:', e));
     });
 
     // when an interactive command finishes
     // lets the browser know to print prompt and accept input
-    shellSocket.on('done', (result) => {
+    shellSocket.on('done', async (result) => {
+      await pending;
       browser.emit('done', result);
     });
 
-    // when a non-interactive program completes
-    shellSocket.on('exit', () => {
+    // when a non-interactive program completes. Wait for any queued file
+    // uploads to finish relaying first, or the browser (which disconnects on
+    // exit in Run mode) would tear down before the file arrives.
+    shellSocket.on('exit', async () => {
+      await pending;
       browser.emit('exit');
     });
 
-    shellSocket.on('disconnect', () => {
+    shellSocket.on('disconnect', async () => {
       console.log('shellSocket on disconnect?');
+      await pending;
       browser.emit('exit');
       browser.disconnect();
     });
