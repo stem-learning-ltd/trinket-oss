@@ -1,5 +1,5 @@
 # stem-trinket-exec — nginx front for the execution stack.
-# PUBLIC: https://exec.trinket.stem.org.uk
+# PUBLIC: https://exec.ide.stem.org.uk
 # Serving execution on its own hostname avoids path-routing entirely:
 # fly-proxy routes by hostname, and this nginx does the /python3, /pygame,
 # /pygame-vnc path fan-out over Fly private networking.

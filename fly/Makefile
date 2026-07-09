@@ -38,7 +38,7 @@ TIGRIS_UPLOADS  := stem-trinket-uploads
 TIGRIS_GENERATED:= stem-trinket-generated
 
 HOST_MAIN := ide.stem.org.uk
-HOST_EXEC := exec.trinket.stem.org.uk
+HOST_EXEC := exec.ide.stem.org.uk
 
 CONFIGS := $(FLY_DIR)/fly.app.toml \
            $(FLY_DIR)/fly.exec.toml \

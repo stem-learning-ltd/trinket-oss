@@ -49,10 +49,10 @@ app:
   serverside:
     python3:
       api:
-        default: 'https://exec.trinket.stem.org.uk/python3'
+        default: 'https://exec.ide.stem.org.uk/python3'
     pygame:
       api:
-        default: 'https://exec.trinket.stem.org.uk/pygame'
+        default: 'https://exec.ide.stem.org.uk/pygame'
 
 db:
   mongo:

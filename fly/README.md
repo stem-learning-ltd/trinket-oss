@@ -15,7 +15,7 @@ execution only (java/R disabled).
             ┌───────────────┴──────────────────┐
             │ https                            │ https (cross-origin: CORS on managers)
             ▼                                  ▼
-    ide.stem.org.uk                  exec.trinket.stem.org.uk
+    ide.stem.org.uk                  exec.ide.stem.org.uk
  ┌───────────────────────┐        ┌────────────────────────────┐
  │ stem-trinket-app      │        │ stem-trinket-exec (nginx)  │      PUBLIC APPS
  │ Node/Hapi :3000       │        │ :80  /health               │
@@ -250,7 +250,7 @@ names since neither is a zone apex):
 
 ```
 ide.stem.org.uk           CNAME  stem-trinket-app.fly.dev
-exec.trinket.stem.org.uk  CNAME  stem-trinket-exec.fly.dev
+exec.ide.stem.org.uk  CNAME  stem-trinket-exec.fly.dev
 ```
 
 Fly auto-provisions and renews Let's Encrypt certs — the eval VM's Certbot
@@ -260,17 +260,17 @@ retires with the VM. Check with `fly certs show ide.stem.org.uk -a stem-trinket-
 
 ```sh
 # exec ingress up
-curl -s https://exec.trinket.stem.org.uk/health          # -> OK
+curl -s https://exec.ide.stem.org.uk/health          # -> OK
 
 # cross-origin Socket.IO handshake emits CORS headers (req 3 in the brief)
 curl -si -H 'Origin: https://ide.stem.org.uk' \
-  'https://exec.trinket.stem.org.uk/python3/socket.io/?EIO=4&transport=polling' \
+  'https://exec.ide.stem.org.uk/python3/socket.io/?EIO=4&transport=polling' \
   | grep -i access-control-allow-origin
 # -> access-control-allow-origin: https://ide.stem.org.uk
 
 # same for pygame (wakes the manager if stopped; first hit may take seconds)
 curl -si -H 'Origin: https://ide.stem.org.uk' \
-  'https://exec.trinket.stem.org.uk/pygame/socket.io/?EIO=4&transport=polling' \
+  'https://exec.ide.stem.org.uk/pygame/socket.io/?EIO=4&transport=polling' \
   | grep -i access-control-allow-origin
 
 # app up
@@ -503,7 +503,7 @@ make -C fly deploy-app
 ## Cloudflare proxy (app hostname only)
 
 `ide.stem.org.uk` is proxied through Cloudflare for WAF/bot protection.
-`exec.trinket.stem.org.uk` must stay **DNS-only forever** — it carries
+`exec.ide.stem.org.uk` must stay **DNS-only forever** — it carries
 long-lived Socket.IO/noVNC WebSocket streams that don't tolerate a second
 proxy layer's idle timeouts.
 
