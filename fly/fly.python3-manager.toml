@@ -27,7 +27,7 @@ primary_region = "lhr"
   {
     "shells": ["http://stem-trinket-python3-shell.flycast:8010"],
     "manager": {
-      "corsOrigins": ["https://ide.stem.org.uk", "https://trinket.stem.org.uk"],
+      "corsOrigins": ["https://ide.stem.org.uk"],
       "generatedUrl": "https://stem-trinket-generated.t3.tigrisfiles.io/python3",
       "s3": { "bucket": "stem-trinket-generated", "prefix": "python3" },
       "cleanup": { "enabled": false }
