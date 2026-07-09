@@ -47,7 +47,7 @@ CONFIGS := $(FLY_DIR)/fly.app.toml \
            $(FLY_DIR)/fly.pygame-manager.toml \
            $(FLY_DIR)/fly.pygame-worker.toml
 
-.PHONY: help validate apps-create flycast redis storage secrets-app secrets-python3-manager secrets-pygame-manager certs-check \
+.PHONY: help validate apps-create flycast redis storage secrets-app secrets-python3-manager secrets-pygame-manager secrets-exec-token certs-check \
         deploy deploy-app deploy-exec deploy-python3-manager deploy-python3-shell \
         deploy-pygame-manager deploy-pygame-worker scale certs status bootstrap
 
@@ -65,6 +65,7 @@ help:
 	@echo "  secrets-app      compose the NODE_CONFIG secret on $(APP_MAIN) (from env vars)"
 	@echo "  secrets-python3-manager  bucket-scoped Tigris key on the python3 manager"
 	@echo "  secrets-pygame-manager   bucket-scoped Tigris key on the pygame manager"
+	@echo "  secrets-exec-token       shared exec-auth HMAC key on app + managers"
 	@echo "  deploy           deploy all six apps in dependency order"
 	@echo "  scale            seed Machine counts (app=2, shells=3)"
 	@echo "  certs            add TLS certs for $(HOST_MAIN) and $(HOST_EXEC)"
@@ -158,6 +159,20 @@ secrets-pygame-manager:
 		AWS_SECRET_ACCESS_KEY="$$GEN_AWS_SECRET_ACCESS_KEY" \
 		AWS_ENDPOINT_URL_S3="$${AWS_ENDPOINT_URL_S3:-https://fly.storage.tigris.dev}" \
 		AWS_REGION="auto"
+
+# Shared HMAC key that authorises code execution: the app mints short-lived
+# tokens (lib/util/nunjucks.js execToken), the managers verify them
+# (execTokenValid). SAME value on all three; it's a key not data, so you can
+# regenerate and re-run any time (invalidates existing tokens -> users reload).
+# Rollout order matters: run this, deploy-app (starts minting), THEN redeploy
+# the managers (start enforcing) — so enforcement never precedes minting.
+secrets-exec-token:
+	@command -v openssl >/dev/null || { echo "openssl required"; exit 1; }
+	@S=$$(openssl rand -hex 32); \
+	  $(FLY) secrets set -a $(APP_MAIN)    EXEC_TOKEN_SECRET="$$S" >/dev/null && echo "set on $(APP_MAIN)"; \
+	  $(FLY) secrets set -a $(APP_PY3_MGR) EXEC_TOKEN_SECRET="$$S" >/dev/null && echo "set on $(APP_PY3_MGR)"; \
+	  $(FLY) secrets set -a $(APP_PG_MGR)  EXEC_TOKEN_SECRET="$$S" >/dev/null && echo "set on $(APP_PG_MGR)"
+	@echo ">> EXEC_TOKEN_SECRET set (same value) on app + both managers."
 
 ## ---------- deploys ----------
 # --ha=false everywhere: flyctl otherwise creates 2 Machines per new app.

@@ -75,6 +75,13 @@
       _.assign(socket_options, options.socket_options);
     }
 
+    // Attach the app-minted execution token so the exec-stack managers can
+    // verify the run came from an app-served page (see lib/util/nunjucks.js).
+    // Covers both python3 and pygame — both use this TrinketServer.
+    if (typeof trinket !== 'undefined' && trinket.config && trinket.config.execToken) {
+      socket_options.auth = { token: trinket.config.execToken };
+    }
+
     // Extract path from host URL for nginx routing (e.g., /python3/socket.io/)
     var hostUrl = self._client.host;
     var socketHost = hostUrl;

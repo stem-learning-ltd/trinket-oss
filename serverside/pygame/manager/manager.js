@@ -15,7 +15,29 @@ import isSvg from 'is-svg';
 import { mkdir, writeFile as fsWriteFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import config from 'config';
+import crypto from 'node:crypto';
 import { storageEnabled, putGenerated } from './storage.js';
+
+// Verify the app-minted execution token (v1.<exp>.<hmac>) before accepting a
+// browser. Shared EXEC_TOKEN_SECRET with the app; fails OPEN when unset so
+// local/dev and a misconfigured rollout keep working.
+const EXEC_TOKEN_SECRET = process.env.EXEC_TOKEN_SECRET;
+if (!EXEC_TOKEN_SECRET) {
+  console.log('[auth] EXEC_TOKEN_SECRET unset — exec token verification DISABLED (fail-open)');
+}
+function execTokenValid(token) {
+  if (!EXEC_TOKEN_SECRET) return true;
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts[0] !== 'v1') return false;
+  const exp = parseInt(parts[1], 10);
+  if (!exp || exp * 1000 < Date.now()) return false;
+  const expected = crypto.createHmac('sha256', EXEC_TOKEN_SECRET).update('v1.' + parts[1]).digest();
+  let provided;
+  try { provided = Buffer.from(parts[2].replace(/-/g, '+').replace(/_/g, '/'), 'base64'); }
+  catch (e) { return false; }
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+}
 
 const PORT = config.get('manager.port');
 const HOST = config.get('manager.host');
@@ -235,6 +257,16 @@ io.on('connection', (browser) => {
 
   const browserId = browser.id;
   console.log(`Browser connected: ${browserId}`);
+
+  // Reject runs that don't carry a valid app-minted token (before claiming a
+  // display, so a bad client can't consume one).
+  if (!execTokenValid(browser.handshake.auth && browser.handshake.auth.token)) {
+    console.log('[auth] rejected connection: missing/invalid exec token');
+    browser.emit('shell connect error');
+    browser.emit('exit');
+    browser.disconnect(true);
+    return;
+  }
 
   // Claim a free display. The worker runs a fixed pool (:1..:DISPLAYS); when
   // all are in use, turn this session away with a clear message rather than

@@ -543,6 +543,23 @@ curl-based uptime probes on the custom domain will get challenge 403s; probe
 - **Public surface:** only `stem-trinket-app` and `stem-trinket-exec` have public IPs
   and certs. Everything else is reachable solely over the org's private
   6PN network.
+- **Execution auth (exec is public):** `exec.*` has no IP allow-list, so
+  without this the internet could drive the managers and run arbitrary code on
+  our tier. The app mints a short-lived signed token (`v1.<exp>.<hmac>`,
+  HMAC-SHA256 over a shared `EXEC_TOKEN_SECRET`) on every trinket page
+  (`lib/util/nunjucks.js` `execToken`, injected into `trinket.config`); the
+  browser sends it in the Socket.IO handshake `auth`; the managers verify
+  signature + expiry (`execTokenValid`) before accepting a run. Anonymous
+  trinkets still run (tokens are minted for everyone) — the point is to force
+  execution through an app-served page, which is rate-limitable and behind the
+  Cloudflare WAF, not to require login. **Fails open when `EXEC_TOKEN_SECRET`
+  is unset** (local/dev, or a botched rollout) so it never hard-locks execution.
+  Set it with `make secrets-exec-token` (same value on app + both managers).
+  Rollout order: set secret → `deploy-app` (mint) → redeploy managers (enforce),
+  so enforcement never precedes minting. Not a complete anti-abuse solution
+  (a determined scraper can pull fresh tokens) — pair with rate-limiting and
+  the monitoring above. The VNC stream (`/pygame-vnc/`) is not yet gated; it
+  only displays a framebuffer, so the RCE path (manager `eval`) is the priority.
 
 ## Cost & scaling notes
 

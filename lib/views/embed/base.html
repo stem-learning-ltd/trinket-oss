@@ -33,6 +33,7 @@
         java_api          : '{% if serverside.java.api %}{{ serverside.java.api }}{% else %}{{ config.app.serverside.java8.api.default }}{% endif %}',
         R_api             : '{% if serverside.R.api %}{{ serverside.R.api }}{% else %}{{ config.app.serverside.r3.api.default }}{% endif %}',
         pygame_api        : '{% if serverside.pygame.api %}{{ serverside.pygame.api }}{% else %}{{ config.app.serverside.pygame.api.default }}{% endif %}',
+        execToken         : '{{ execToken() }}',
         logClientCodeError : {{config.app.embed.logClientCodeError}},
         logClientMetric   : {{config.app.embed.logClientMetric}},
         draftDebounce     : {{config.app.embed.draftDebounce}},
