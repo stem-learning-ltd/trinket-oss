@@ -1241,7 +1241,10 @@ module.exports = [
       auth: 'session',
       payload : {
         maxBytes  : 1048576 * 5, // 5MB
-        output : 'file'
+        output : 'file',
+        // Hapi 20 disables multipart by default and 415s the Dropzone
+        // multipart/form-data upload without this.
+        multipart : true
       },
       validate : {
         payload : {
@@ -1257,7 +1260,8 @@ module.exports = [
       pre : ['file(params.fileId)'],
       payload : {
         maxBytes : 1048576 * 5, // 5MB
-        output : 'file'
+        output : 'file',
+        multipart : true
       },
       validate : {
         payload : {
