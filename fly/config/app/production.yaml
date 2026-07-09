@@ -23,13 +23,13 @@ features:
 app:
   url:
     protocol: https
-    hostname: trinket.stem.org.uk
+    hostname: ide.stem.org.uk
   plugins:
     session:
       cookieOptions:
         # password (the session secret) comes from the SESSION_SECRET Fly secret
         isSecure: true
-        domain: .trinket.stem.org.uk
+        domain: .ide.stem.org.uk
   embed:
     # Serve Skulpt (the in-browser Python engine) from the app's own
     # /components/skulpt/ instead of the default external CDN host

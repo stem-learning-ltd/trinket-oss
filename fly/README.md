@@ -15,7 +15,7 @@ execution only (java/R disabled).
             ┌───────────────┴──────────────────┐
             │ https                            │ https (cross-origin: CORS on managers)
             ▼                                  ▼
-    trinket.stem.org.uk              exec.trinket.stem.org.uk
+    ide.stem.org.uk                  exec.trinket.stem.org.uk
  ┌───────────────────────┐        ┌────────────────────────────┐
  │ stem-trinket-app      │        │ stem-trinket-exec (nginx)  │      PUBLIC APPS
  │ Node/Hapi :3000       │        │ :80  /health               │
@@ -249,12 +249,12 @@ Then create the DNS records `fly certs add` prints (CNAMEs are fine for both
 names since neither is a zone apex):
 
 ```
-trinket.stem.org.uk       CNAME  stem-trinket-app.fly.dev
+ide.stem.org.uk           CNAME  stem-trinket-app.fly.dev
 exec.trinket.stem.org.uk  CNAME  stem-trinket-exec.fly.dev
 ```
 
 Fly auto-provisions and renews Let's Encrypt certs — the eval VM's Certbot
-retires with the VM. Check with `fly certs show trinket.stem.org.uk -a stem-trinket-app`.
+retires with the VM. Check with `fly certs show ide.stem.org.uk -a stem-trinket-app`.
 
 ### 10. Smoke tests
 
@@ -263,18 +263,18 @@ retires with the VM. Check with `fly certs show trinket.stem.org.uk -a stem-trin
 curl -s https://exec.trinket.stem.org.uk/health          # -> OK
 
 # cross-origin Socket.IO handshake emits CORS headers (req 3 in the brief)
-curl -si -H 'Origin: https://trinket.stem.org.uk' \
+curl -si -H 'Origin: https://ide.stem.org.uk' \
   'https://exec.trinket.stem.org.uk/python3/socket.io/?EIO=4&transport=polling' \
   | grep -i access-control-allow-origin
-# -> access-control-allow-origin: https://trinket.stem.org.uk
+# -> access-control-allow-origin: https://ide.stem.org.uk
 
 # same for pygame (wakes the manager if stopped; first hit may take seconds)
-curl -si -H 'Origin: https://trinket.stem.org.uk' \
+curl -si -H 'Origin: https://ide.stem.org.uk' \
   'https://exec.trinket.stem.org.uk/pygame/socket.io/?EIO=4&transport=polling' \
   | grep -i access-control-allow-origin
 
 # app up
-curl -sI https://trinket.stem.org.uk/ | head -1           # -> HTTP/2 200
+curl -sI https://ide.stem.org.uk/ | head -1           # -> HTTP/2 200
 ```
 
 Then run a real Python trinket in the browser (console output should work
@@ -502,7 +502,7 @@ make -C fly deploy-app
 
 ## Cloudflare proxy (app hostname only)
 
-`trinket.stem.org.uk` is proxied through Cloudflare for WAF/bot protection.
+`ide.stem.org.uk` is proxied through Cloudflare for WAF/bot protection.
 `exec.trinket.stem.org.uk` must stay **DNS-only forever** — it carries
 long-lived Socket.IO/noVNC WebSocket streams that don't tolerate a second
 proxy layer's idle timeouts.
@@ -510,13 +510,13 @@ proxy layer's idle timeouts.
 Required with the proxy on (all records DNS-only/grey):
 
 ```
-CNAME  _acme-challenge.trinket.stem.org.uk → trinket.stem.org.uk.12okern.flydns.net.
-TXT    _fly-ownership.trinket.stem.org.uk  → app-12okern
+CNAME  _acme-challenge.ide.stem.org.uk → ide.stem.org.uk.<token>.flydns.net.
+TXT    _fly-ownership.ide.stem.org.uk  → app-<token>
 ```
 
 Without the `_acme-challenge` CNAME, Fly cannot renew the cert it presents to
 Cloudflare (the hostname no longer resolves to Fly) and the origin leg breaks
-~3 months later. Get current values: `fly certs setup trinket.stem.org.uk -a stem-trinket-app`.
+~3 months later. Get current values: `fly certs setup ide.stem.org.uk -a stem-trinket-app`.
 
 Settings: SSL/TLS mode **Full (strict)** for this hostname (Fly always has a
 valid cert). Managed challenges CANNOT be solved inside third-party iframes —

@@ -1,5 +1,5 @@
 # stem-trinket-app — main Node/Hapi + AngularJS app.
-# PUBLIC: https://trinket.stem.org.uk
+# PUBLIC: https://ide.stem.org.uk
 # Deploy with the repo root as build context (see fly/Makefile: deploy-app).
 app = "stem-trinket-app"
 primary_region = "lhr"

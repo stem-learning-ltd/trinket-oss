@@ -37,7 +37,7 @@ REDIS_NAME      := stem-trinket-redis
 TIGRIS_UPLOADS  := stem-trinket-uploads
 TIGRIS_GENERATED:= stem-trinket-generated
 
-HOST_MAIN := trinket.stem.org.uk
+HOST_MAIN := ide.stem.org.uk
 HOST_EXEC := exec.trinket.stem.org.uk
 
 CONFIGS := $(FLY_DIR)/fly.app.toml \
