@@ -1,5 +1,6 @@
 features:
   courses: true   # Enable/disable courses feature entirely
+  selfService: true  # Public may self-register and save/remix content (set false to lock down)
   assets: false   # Enable/disable asset uploads (requires S3 or compatible storage)
   accessibilityToggle: false  # Show accessibility toggle in embed toolbar (for screen reader mode)
   trinkets:
