@@ -178,5 +178,27 @@ module.exports = function() {
         });
       });
     });
+
+    describe('Page rendering (regression: config.viewEngine loader corruption)', function() {
+      // config.viewEngine = viewEngine (app.js) stored the live nunjucks env in the
+      // config object; node-config's deep-extend then flattened the FileSystemLoader
+      // into a plain object mid-render, so every page 500'd with
+      // "loader.getSource is not a function". Guard against reintroducing it.
+      before(function() { flow.switchUser(''); });
+
+      it('should render GET / with status 200', function(done) {
+        flow.get('/').end(function(err, res) {
+          res.statusCode.should.eql(200);
+          done();
+        });
+      });
+
+      it('should render GET /login with status 200', function(done) {
+        flow.get('/login').end(function(err, res) {
+          res.statusCode.should.eql(200);
+          done();
+        });
+      });
+    });
   });
 }
