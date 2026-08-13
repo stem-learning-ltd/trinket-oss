@@ -3,8 +3,8 @@ var _        = require('underscore'),
     url      = require('url'),
     querystring = require('querystring'),
     defaults = require('./defaults'),
-    config   = require('../../config/app.config'),
-    app      = require('../../app.js');
+    app      = require('../../app.js'),
+    config   = require('../../config/app.config');
 
 // public interface
 var methods = {
@@ -416,14 +416,26 @@ function createRequest(flow, type, url) {
 }
 
 function Flow() {
-  this.agent      = server(app.listener);
-  this.activeUser = 'user';
-  this.cookies    = {};
+  var self = this;
+  self._agentInstance = null;
+
+  // app.js exports a Promise that resolves to the Hapi server.
+  // Store the listener when it becomes available so createRequest() can use it.
+  app.then(function(s) {
+    self._agentInstance = server(s.listener);
+  });
+
+  self.activeUser = 'user';
+  self.cookies    = {};
 
   // bind all of the methods for ease of use in before/after
   // blocks in the test...
   // e.g. before(flow.login)
-  _.bindAll.apply(_, [this].concat(Object.keys(methods)));
+  _.bindAll.apply(_, [self].concat(Object.keys(methods)));
+
+  Object.defineProperty(self, 'agent', {
+    get: function() { return self._agentInstance; }
+  });
 }
 
 _.extend(Flow.prototype, methods);

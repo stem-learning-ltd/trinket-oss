@@ -309,6 +309,11 @@ const init = async () => {
     log.info('Server started on port: ' + server.info.port);
 
     detectLeaks();
+  } else {
+    // In test/non-start mode, initialize the server (starts caches, plugins) without listening.
+    // This is required for catbox session caches to function when requests are made
+    // via supertest against server.listener.
+    await server.initialize();
   }
 
   return server;

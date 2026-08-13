@@ -1,5 +1,6 @@
 var sinon   = require('sinon'),
-    snapshotQueue = require('../../lib/util/queues').snapshots();
+    queues  = require('../../lib/util/queues'),
+    snapshotQueue = queues.snapshots ? queues.snapshots() : queues.exports();
 
 module.exports = {
   snapshotQueue : snapshotQueue,
