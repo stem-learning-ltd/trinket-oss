@@ -6,6 +6,8 @@
 
 features:
   courses: false
+  # ENG-2081: staff-provisioned accounts only — no public signup/remix/save UI
+  selfService: false
   # Uploads to Tigris (config/aws.js endpoint patch applied). Requires: the app
   # holding a key that can write to stem-trinket-uploads, and that bucket being
   # publicly readable so embedded <img> URLs resolve (ENG-1885).
@@ -31,6 +33,9 @@ app:
         isSecure: true
         domain: .ide.stem.org.uk
   embed:
+    # ENG-2081: hide the inline embed account/login form (its only purpose was
+    # save/remix/signup, all removed on this locked-down instance)
+    enableLogin: false
     # Serve Skulpt (the in-browser Python engine) from the app's own
     # /components/skulpt/ instead of the default external CDN host
     # (aws.buckets.cdn.host), which we don't configure — leaving it unset made
