@@ -145,5 +145,38 @@ module.exports = function() {
         });
       });
     });
+
+    describe('When self-service is disabled', function() {
+      var config = require('config');
+
+      before(function() {
+        config.features.selfService = false;
+        flow.switchUser('');
+      });
+
+      after(function() {
+        config.features.selfService = true;
+      });
+
+      it('should 403 the create endpoint and create no account', function(done) {
+        flow.post('/api/users')
+          .send({ email: 'lockout@example.com', password: 'sekret1' })
+          .end(function(err, res) {
+            res.statusCode.should.eql(403);
+            User.findByLogin('lockout@example.com', function(err, doc) {
+              should.not.exist(doc);
+              done();
+            });
+          });
+      });
+
+      it('should redirect GET /signup to /login', function(done) {
+        flow.get('/signup').end(function(err, res) {
+          res.statusCode.should.eql(302);
+          url.parse(res.headers.location).pathname.should.eql('/login');
+          done();
+        });
+      });
+    });
   });
 }
