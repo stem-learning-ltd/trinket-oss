@@ -768,3 +768,18 @@ Confirm untouched behaviours still work: existing-user `/login`, and admin CSV p
 - **Spec coverage:** flag+helper (Task 1) ✓; server gate for signup form/API (Task 2) ✓; Google OAuth block (Task 3) ✓; template global (Task 4) ✓; Sign Up nav links (Task 5) ✓; non-owner Remix/Copy with owner-Save preserved (Task 6) ✓; Share-modal prompt + Help prose (Task 7) ✓; about.html past tense (Task 8) ✓; production `selfService:false` + `enableLogin:false` (Task 9) ✓; admin upload & login untouched, verified (Task 10) ✓. Index landing page is out of scope (ENG-2082).
 - **Naming consistency:** helper `isSelfServiceEnabled()` (server) and nunjucks global `selfServiceEnabled()` (templates) used consistently in every task.
 - **Known caveats surfaced (not silent):** Google guard has no automated test (dormant path); embed remix change is manually verified (fixture risk); `/about` and `/help` have no route in this codebase and must be verified on the deployment.
+
+---
+
+## Execution notes / deviations (2026-08-13)
+
+Recorded after implementation so the plan matches what was actually built.
+
+- **Task 5 scope expanded.** The plan gated only `base.html` and `embed/base.html`, but `login.html` renders its own `/signup` links (`:51` always, `:64` in the course-invitation modal). Both were added to Task 5's gating — otherwise `/login` would still show a Sign Up link.
+- **Task 5 render tests dropped.** The app's HTML render path is broken in the test harness (a pre-existing nunjucks `watch:true` bug: `GET /login` → 500 `loader.getSource is not a function`), so render-based assertions can't pass. Template gating is verified by source inspection + `nunjucks.precompile` instead, plus the manual checklist below. The non-rendering server tests (403 + `/signup` redirect) remain and pass.
+- **Task 2 test corrected + harness repaired.** The plan's Task-2 integration test posted `g-recaptcha-response` to `POST /api/users`, which that route's Joi schema rejects (validation runs before the handler). Fixed the test to send only `{email,password}` (the guard 403s before reCAPTCHA anyway). Separately, the API test harness could not run at all under the Hapi 20 port (agent built from `app.listener` when `app.js` exports a Promise; harmony-reflect/Proxy ordering; `--check-leaks` vs app globals; session catbox needing `server.initialize()`). These pre-existing repairs live in their own commit (`54e9db1`), alongside two genuine compat shims in `routeParser.js` (`reply.redirect(url)`, and passing `Boom` errors through). A subagent had also added `allowUnknown:true` to global validation to force the test green — that was reverted.
+- **Task 9 resolved spec open-item #2** by setting `app.embed.enableLogin:false` in production (hides the inline embed login form).
+- **Accepted follow-ups (out of scope here):** `index.html:50` Sign Up button → ENG-2082; move `catbox-redis` to `devDependencies`; optional Google-block flash message; the broken nunjucks test-render path is pre-existing harness rot worth its own ticket.
+
+### Manual verification still required on a running instance (harness can't render)
+With `features.selfService:false`: `/signup` → `/login`; `POST /api/users` → 403; no Sign Up link in nav or on `/login`; someone else's embed shows no Remix/Copy and no "Copy or Remix" Share-modal pro-tip; an owner still sees "Save" on their own trinket; `/about` reads past tense. With the flag default/true: everything behaves as before. Confirm how `/about` and `/help` are served on the deployment (no route in `config/routes.js`).
