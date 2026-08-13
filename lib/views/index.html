@@ -20,46 +20,8 @@
       Trinket is an open source browser-based coding platform.
     </p>
     <p style="color: #666; margin-bottom: 0;">
-      Write and run Python, HTML, Java, and more. Create interactive courses. No downloads required.
+      Write and run Python, HTML, Java, and more.
     </p>
   </div>
 </div>
-
-<div class="row" style="padding-bottom: 40px;">
-  <div class="small-12 medium-5 columns medium-offset-1">
-    <h4 style="margin-bottom: 0.5rem;">For Learners</h4>
-    <ul style="margin-bottom: 0;">
-      <li>See results instantly in your browser</li>
-      <li>Save and share your projects</li>
-    </ul>
-  </div>
-  <div class="small-12 medium-5 columns end">
-    <h4 style="margin-bottom: 0.5rem;">For Educators</h4>
-    <ul style="margin-bottom: 0;">
-      <li>Create interactive coding courses</li>
-      <li>Track student progress</li>
-    </ul>
-  </div>
-</div>
-
-{% if not user %}
-<div class="row" style="padding-bottom: 40px;">
-  <div class="small-12 medium-6 medium-offset-3 columns text-center">
-    <div class="row">
-      <div class="small-6 columns">
-        <a href="/signup" class="button success expand" style="margin-bottom: 0;">Sign Up</a>
-      </div>
-      <div class="small-6 columns">
-        <a href="/login" class="button expand" style="margin-bottom: 0;">Log In</a>
-      </div>
-    </div>
-  </div>
-</div>
-{% else %}
-<div class="row" style="padding-bottom: 40px;">
-  <div class="small-12 columns text-center">
-    <a href="/home" class="button success">Go to My Trinkets</a>
-  </div>
-</div>
-{% endif %}
 {% endblock %}
