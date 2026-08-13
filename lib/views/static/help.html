@@ -18,7 +18,11 @@
     <p>Click "New Trinket" from the dropdown menu in the navigation bar and select a language. You can write code in the editor and click "Run" to see the output.</p>
 
     <h4>Saving Your Work</h4>
+    {% if selfServiceEnabled() %}
     <p>Sign up for an account to save your trinkets. Once logged in, your work is automatically saved.</p>
+    {% else %}
+    <p>Once you are logged in, your work is automatically saved.</p>
+    {% endif %}
 
     <h4>Sharing Trinkets</h4>
     <p>Each trinket has a unique URL you can share. You can also embed trinkets in other websites using the embed code.</p>

@@ -3,5 +3,7 @@
 {% endmacro %}
 
 {% macro copyTrinket() %}
+{% if selfServiceEnabled() %}
 {{ tip() }} You can save a copy for yourself with the <i class="fa fa-copy"></i> Copy or <i class="fa fa-save"></i> Remix button.
+{% endif %}
 {% endmacro %}

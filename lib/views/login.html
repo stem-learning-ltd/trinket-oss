@@ -48,7 +48,7 @@
 
     <div class="row">
       <div class="small-12 columns text-center">
-        <p>Need to create an account? <a href="/signup">Sign Up</a></p>
+        {% if selfServiceEnabled() %}<p>Need to create an account? <a href="/signup">Sign Up</a></p>{% endif %}
       </div>
     </div>
 
@@ -61,7 +61,7 @@
   <p>To join <strong>{{ flash.courseInvitation.course.name }}</strong>, you'll need to login or create a free account first.</p>
   <hr>
   <p>If you already have a Trinket account, just login below and you'll be automatically added to your course.</p>
-  <p>Don't have a Trinket account? Sign up <a href="/signup">here</a> to create your account.</p>
+  {% if selfServiceEnabled() %}<p>Don't have a Trinket account? Sign up <a href="/signup">here</a> to create your account.</p>{% endif %}
   <p>Questions? Click the <i class="fa fa-question-circle"></i> Help link at the top of the page or contact your instructor.</p>
   <a class="close-reveal-modal">&#215;</a>
 </div>

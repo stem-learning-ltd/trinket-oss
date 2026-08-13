@@ -121,7 +121,7 @@
           </span>
           <ul id="brand-menu" class="f-dropdown" data-dropdown-content aria-hidden="true" tabindex="-1">
             <li><a href="//{{config.app.url.hostname}}" target="_blank">About</a></li>
-            <li><a href="//{{config.app.url.hostname}}/signup" target="_blank">Sign Up</a></li>
+            {% if selfServiceEnabled() %}<li><a href="//{{config.app.url.hostname}}/signup" target="_blank">Sign Up</a></li>{% endif %}
           </ul>
         {% else %}
           <span title="{{ config.app.siteName }}" data-dropdown="brand-menu" aria-controls="brand-menu" aria-expanded="false">
@@ -181,26 +181,32 @@
             {% endif %}
             {% if copyingEnabled %}
             <!-- no user, remix if trinket.id, copy if inline -->
+            {% if selfServiceEnabled() %}
             <a title="{{ 'Remix this trinket.' if trinket.id else 'Save a copy of this trinket.' }}"
                class="save-it menu-button allow-original ui-option guest-option has-tip item right-off-canvas-toggle {% if user %} hide{% endif %}"
                data-action="menu.user">
               <i class="fa fa-save"></i>
               <label class="show-for-medium-up">{{ 'Remix' if trinket.id else 'Copy' }}</label>
             </a>
+            {% endif %}
             <!-- user, no trinket.id -->
+            {% if selfServiceEnabled() %}
             <a title="Save a copy of this trinket."
                class="save-it create-copy menu-button allow-original ui-option user-option owner-option has-tip item {{ 'disabled' if isOwner }} {% if not user or library %}hide{% endif %}"
                data-action="{{ 'menu.upgrade' if upgradeNeeded else 'library.add' }}">
               <i class="fa fa-save"></i>
               <label class="show-for-medium-up">Copy</label>
             </a>
-            <!-- user, trinket.id -->
+            {% endif %}
+            <!-- user, trinket.id (owner Save kept; non-owner Remix hidden when locked down) -->
+            {% if isOwner or selfServiceEnabled() %}
             <a title="{{'Save changes.' if isOwner else 'Remix this trinket.'}}"
                class="save-it create-remix menu-button allow-original ui-option user-option owner-option has-tip item {% if isOwner %}disabled blue-highlight{% else %}green-highlight{% endif %} {% if not user or library %}hide{% endif %}"
                data-action="{{ 'menu.upgrade' if upgradeNeeded else ('code.save' if isOwner else 'library.add') }}">
               <i class="fa {{'fa-save' if isOwner else 'fa-code-fork'}}"></i>
               <label class="show-for-medium-up">{{'Save' if isOwner else 'Remix'}}</label>
             </a>
+            {% endif %}
             <!-- user, has remix, viewing remix -->
             <a title="Save changes to your Remix."
                class="save-it save-remix menu-button allow-original ui-option user-option owner-option has-tip item blue-highlight {% if isOwner %}disabled{% endif %} {% if not user or library %}hide{% endif %}"

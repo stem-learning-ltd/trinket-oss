@@ -1,3 +1,4 @@
 --reporter spec
 --recursive
 --check-leaks
+--globals User,Course,Lesson,Material,File,Trinket,Interaction,Folder,CourseInvitation,log,NODE_CONFIG
