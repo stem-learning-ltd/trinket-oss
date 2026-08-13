@@ -121,7 +121,7 @@
           </span>
           <ul id="brand-menu" class="f-dropdown" data-dropdown-content aria-hidden="true" tabindex="-1">
             <li><a href="//{{config.app.url.hostname}}" target="_blank">About</a></li>
-            <li><a href="//{{config.app.url.hostname}}/signup" target="_blank">Sign Up</a></li>
+            {% if selfServiceEnabled() %}<li><a href="//{{config.app.url.hostname}}/signup" target="_blank">Sign Up</a></li>{% endif %}
           </ul>
         {% else %}
           <span title="{{ config.app.siteName }}" data-dropdown="brand-menu" aria-controls="brand-menu" aria-expanded="false">

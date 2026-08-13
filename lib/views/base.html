@@ -183,9 +183,11 @@
                 </a>
               </li>
             {% else %}
+              {% if selfServiceEnabled() %}
               {% block signup %}
               <li><a href="/signup{% block nextAfterSignUp %}{% endblock %}">Sign Up</a></li>
               {% endblock %}
+              {% endif %}
               <li><a href="/login{% block nextAfterSignIn %}{% endblock %}">Log In <i class="fa fa-sign-in"></i></a></li>
             {% endif %}
           </ul>
