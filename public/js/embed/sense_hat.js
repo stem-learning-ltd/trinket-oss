@@ -68,6 +68,13 @@
     };
   }
 
+  function pushStickEvent(stick, direction, state, nowMs) {
+    if (!KEY_CODES.hasOwnProperty(direction)) { return false; }
+    stick._eventQueue.push(makeInputEvent(direction, state, nowMs));
+    stick.emit('sensestick.input', { type: 'keydown' });
+    return true;
+  }
+
   // --- keyboard mapping ---
   function keyToDirection(key) {
     switch (key) {
@@ -84,6 +91,7 @@
     makeStick: makeStick,
     keyToDirection: keyToDirection,
     makeInputEvent: makeInputEvent,
+    pushStickEvent: pushStickEvent,
     KEY_CODES: KEY_CODES,
     STATE: STATE
   };

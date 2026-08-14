@@ -73,3 +73,23 @@ describe('SenseHat.makeInputEvent', function() {
     expect(SenseHat.STATE).to.deep.equal({ release: 0, press: 1, hold: 2 });
   });
 });
+
+describe('SenseHat.pushStickEvent', function() {
+  it('enqueues an event and emits sensestick.input', function() {
+    var s = SenseHat.makeStick();
+    var received = [];
+    s.once('sensestick.input', function(evt, data) { received.push(data); });
+    var ok = SenseHat.pushStickEvent(s, 'left', SenseHat.STATE.press, 2000);
+    expect(ok).to.equal(true);
+    expect(s._eventQueue).to.have.length(1);
+    expect(s._eventQueue[0]).to.deep.equal(
+      { timestamp: 2, key: 105, state: 1, type: 1 });
+    expect(received).to.deep.equal([{ type: 'keydown' }]);
+  });
+  it('ignores unknown directions without touching the queue', function() {
+    var s = SenseHat.makeStick();
+    var ok = SenseHat.pushStickEvent(s, 'nowhere', SenseHat.STATE.press, 2000);
+    expect(ok).to.equal(false);
+    expect(s._eventQueue).to.have.length(0);
+  });
+});
