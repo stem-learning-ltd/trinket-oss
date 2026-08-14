@@ -209,6 +209,7 @@
     var ctx = ui.ctx, size = ui.canvas.width, n = 8, cs = size / n, pad = cs * 0.12;
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, size, size);
+    // fillStyle must be set before roundRect() (which calls beginPath), then fill().
     for (var i = 0; i < 64; i++) {
       var x = (i % n) * cs, y = Math.floor(i / n) * cs;
       ctx.fillStyle = cells[i];
@@ -254,16 +255,16 @@
       btn.el.addEventListener('pointerdown', pd);
       btn.el.addEventListener('pointerup', pu);
       btn.el.addEventListener('pointerleave', pu);
-      dpadHandlers.push([btn.el, pd, pu]);
+      dpadHandlers.push({ el: btn.el, pd: pd, pu: pu });
     });
 
     return function detach() {
       ui.root.removeEventListener('keydown', onKeyDown);
       ui.root.removeEventListener('keyup', onKeyUp);
       dpadHandlers.forEach(function(h) {
-        h[0].removeEventListener('pointerdown', h[1]);
-        h[0].removeEventListener('pointerup', h[2]);
-        h[0].removeEventListener('pointerleave', h[2]);
+        h.el.removeEventListener('pointerdown', h.pd);
+        h.el.removeEventListener('pointerup', h.pu);
+        h.el.removeEventListener('pointerleave', h.pu);
       });
     };
   }
@@ -286,6 +287,7 @@
     return function detach() { clearInterval(handle); };
   }
 
+  // config is supplied by the Skulpt graphics-setup mechanism and currently reserved for future use.
   function init(config, $target) {
     // idempotent re-runs: tear down any prior instance
     if (typeof Sk !== 'undefined' && Sk.sense_hat &&
@@ -295,19 +297,22 @@
     injectStyles();
 
     var stick = makeStick();
-    Sk.sense_hat = {
+    var state = {
       pixels: blankPixels(),
       low_light: false,
       gamma: makeZeroGamma(),
       rtimu: defaultRtimu(),
       sensestick: stick
     };
+    Sk.sense_hat = state;
 
+    var destroyed = false;
     var ui = buildUI($target);
     ensureFocusable(ui.root);
 
     function render() {
-      paint(ui, pixelsToCells(Sk.sense_hat.pixels, Sk.sense_hat.low_light));
+      if (destroyed) { return; }
+      paint(ui, pixelsToCells(state.pixels, state.low_light));
     }
 
     // init, setpixels, setpixel, changeLowlight, setGamma -> repaint from state
@@ -318,14 +323,19 @@
     var detachInput = wireInput(ui, stick);
     var detachAbort = wireAbort(stick);
 
-    Sk.sense_hat._destroy = function() {
+    state._destroy = function() {
+      destroyed = true;
       detachInput();
       detachAbort();
       ui.teardownDom();
+      if (Sk.sense_hat === state) {
+        Sk.sense_hat_emit = null;
+        Sk.sense_hat = null;
+      }
     };
 
     render(); // paint the blank grid immediately
-    return Sk.sense_hat._destroy;
+    return state._destroy;
   }
 
   return {
