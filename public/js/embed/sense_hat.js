@@ -17,6 +17,11 @@
 })(typeof self !== 'undefined' ? self : this, function() {
   'use strict';
 
+  // --- constants (from sense_hat/stick.py) ---
+  var KEY_CODES = { up: 103, down: 108, left: 105, right: 106, middle: 28 };
+  var STATE = { release: 0, press: 1, hold: 2 };
+  var EV_KEY = 1;
+
   // --- sensestick EventEmitter (matches _internal_sense_hat.js expectations) ---
   function makeStick() {
     var listeners = {};
@@ -54,6 +59,15 @@
     };
   }
 
+  function makeInputEvent(direction, state, nowMs) {
+    return {
+      timestamp: nowMs / 1000,
+      key: KEY_CODES[direction],
+      state: state,
+      type: EV_KEY
+    };
+  }
+
   // --- keyboard mapping ---
   function keyToDirection(key) {
     switch (key) {
@@ -68,6 +82,9 @@
 
   return {
     makeStick: makeStick,
-    keyToDirection: keyToDirection
+    keyToDirection: keyToDirection,
+    makeInputEvent: makeInputEvent,
+    KEY_CODES: KEY_CODES,
+    STATE: STATE
   };
 });

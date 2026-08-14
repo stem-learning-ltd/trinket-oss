@@ -59,3 +59,17 @@ describe('SenseHat.keyToDirection', function() {
     expect(SenseHat.keyToDirection(' ')).to.equal(null);
   });
 });
+
+describe('SenseHat.makeInputEvent', function() {
+  it('builds the (timestamp, key, state, type) event shape', function() {
+    var e = SenseHat.makeInputEvent('up', SenseHat.STATE.press, 1500);
+    expect(e).to.deep.equal({ timestamp: 1.5, key: 103, state: 1, type: 1 });
+  });
+  it('maps every direction to its Linux key code', function() {
+    expect(SenseHat.KEY_CODES).to.deep.equal(
+      { up: 103, down: 108, left: 105, right: 106, middle: 28 });
+  });
+  it('exposes press/release/hold states', function() {
+    expect(SenseHat.STATE).to.deep.equal({ release: 0, press: 1, hold: 2 });
+  });
+});
