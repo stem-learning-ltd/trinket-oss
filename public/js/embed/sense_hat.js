@@ -1,0 +1,60 @@
+/**
+ * Sense HAT host-side component for client-side (Skulpt) Python trinkets.
+ * Supplies the JS half the shipped `sense_hat` Skulpt module expects:
+ * creates Sk.sense_hat (+ sensestick), installs Sk.sense_hat_emit to render
+ * the 8x8 LED matrix, and feeds joystick InputEvents from keyboard + D-pad.
+ *
+ * Lazy-loaded by public/js/skulpt/wrapper.js when a trinket imports sense_hat.
+ * Pure helpers are exported for unit testing; init() does DOM/render/input.
+ */
+;(function(root, factory) {
+  var SenseHat = factory();
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = SenseHat;          // Node (tests)
+  } else {
+    root.SenseHat = SenseHat;           // browser global
+  }
+})(typeof self !== 'undefined' ? self : this, function() {
+  'use strict';
+
+  // --- sensestick EventEmitter (matches _internal_sense_hat.js expectations) ---
+  function makeStick() {
+    var listeners = {};
+
+    function on(evt, fn) {
+      (listeners[evt] = listeners[evt] || []).push(fn);
+    }
+    function off(evt, fn) {
+      if (!listeners[evt]) { return; }
+      listeners[evt] = listeners[evt].filter(function(g) {
+        return g !== fn && g.__orig !== fn;
+      });
+    }
+    function once(evt, fn) {
+      function wrapper() {
+        off(evt, wrapper);
+        return fn.apply(this, arguments);
+      }
+      wrapper.__orig = fn;
+      on(evt, wrapper);
+    }
+    function emit(evt, data) {
+      (listeners[evt] || []).slice().forEach(function(fn) {
+        fn(evt, data);
+      });
+    }
+
+    return {
+      _eventQueue: [],
+      _threadHandler: null,
+      on: on,
+      once: once,
+      off: off,
+      emit: emit
+    };
+  }
+
+  return {
+    makeStick: makeStick
+  };
+});
