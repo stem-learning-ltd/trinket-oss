@@ -45,3 +45,17 @@ describe('SenseHat.makeStick', function() {
     expect(n).to.equal(0);
   });
 });
+
+describe('SenseHat.keyToDirection', function() {
+  it('maps arrow keys and Enter to directions', function() {
+    expect(SenseHat.keyToDirection('ArrowUp')).to.equal('up');
+    expect(SenseHat.keyToDirection('ArrowDown')).to.equal('down');
+    expect(SenseHat.keyToDirection('ArrowLeft')).to.equal('left');
+    expect(SenseHat.keyToDirection('ArrowRight')).to.equal('right');
+    expect(SenseHat.keyToDirection('Enter')).to.equal('middle');
+  });
+  it('returns null for unrelated keys', function() {
+    expect(SenseHat.keyToDirection('a')).to.equal(null);
+    expect(SenseHat.keyToDirection(' ')).to.equal(null);
+  });
+});

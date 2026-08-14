@@ -54,7 +54,20 @@
     };
   }
 
+  // --- keyboard mapping ---
+  function keyToDirection(key) {
+    switch (key) {
+      case 'ArrowUp':    return 'up';
+      case 'ArrowDown':  return 'down';
+      case 'ArrowLeft':  return 'left';
+      case 'ArrowRight': return 'right';
+      case 'Enter':      return 'middle';
+      default:           return null;
+    }
+  }
+
   return {
-    makeStick: makeStick
+    makeStick: makeStick,
+    keyToDirection: keyToDirection
   };
 });
