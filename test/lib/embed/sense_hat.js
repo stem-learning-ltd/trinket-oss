@@ -93,3 +93,24 @@ describe('SenseHat.pushStickEvent', function() {
     expect(s._eventQueue).to.have.length(0);
   });
 });
+
+describe('SenseHat.pixelsToCells', function() {
+  function fill(color) {
+    var a = [];
+    for (var i = 0; i < 64; i++) { a.push(color.slice()); }
+    return a;
+  }
+  it('maps raw pixels to rgb() strings at full brightness', function() {
+    var cells = SenseHat.pixelsToCells(fill([255, 0, 0]), false);
+    expect(cells).to.have.length(64);
+    expect(cells[0]).to.equal('rgb(255,0,0)');
+  });
+  it('dims every channel when low_light is on', function() {
+    var cells = SenseHat.pixelsToCells(fill([255, 255, 255]), true);
+    expect(cells[0]).to.equal('rgb(102,102,102)'); // round(255 * 0.4)
+  });
+  it('treats missing channels as zero', function() {
+    var cells = SenseHat.pixelsToCells([[10]], false);
+    expect(cells[0]).to.equal('rgb(10,0,0)');
+  });
+});

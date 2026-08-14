@@ -75,6 +75,27 @@
     return true;
   }
 
+  // --- rendering (pure part) ---
+  var LOW_LIGHT_FACTOR = 0.4;
+
+  function clampByte(n) {
+    n = Math.round(n);
+    if (n < 0) { return 0; }
+    if (n > 255) { return 255; }
+    return n;
+  }
+
+  function pixelsToCells(pixels, lowLight) {
+    var factor = lowLight ? LOW_LIGHT_FACTOR : 1;
+    return pixels.map(function(px) {
+      px = px || [];
+      var r = clampByte((px[0] || 0) * factor);
+      var g = clampByte((px[1] || 0) * factor);
+      var b = clampByte((px[2] || 0) * factor);
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    });
+  }
+
   // --- keyboard mapping ---
   function keyToDirection(key) {
     switch (key) {
@@ -92,6 +113,7 @@
     keyToDirection: keyToDirection,
     makeInputEvent: makeInputEvent,
     pushStickEvent: pushStickEvent,
+    pixelsToCells: pixelsToCells,
     KEY_CODES: KEY_CODES,
     STATE: STATE
   };
