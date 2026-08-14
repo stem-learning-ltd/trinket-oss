@@ -108,7 +108,228 @@
     }
   }
 
+  var SENSE_HAT_CSS =
+    '.sense-hat{display:flex;flex-direction:column;align-items:center;' +
+    'gap:12px;padding:12px;outline:none;}' +
+    '.sense-hat-matrix{width:16rem;height:16rem;max-width:92%;' +
+    'aspect-ratio:1/1;background:#111;border-radius:8px;touch-action:none;}' +
+    '.sense-hat-dpad{display:grid;grid-template-columns:repeat(3,40px);' +
+    'grid-template-rows:repeat(3,40px);gap:4px;}' +
+    '.sense-hat-dpad-btn{border:1px solid #888;background:#f4f4f4;' +
+    'border-radius:6px;cursor:pointer;font-size:14px;line-height:1;' +
+    'touch-action:none;}' +
+    '.sense-hat-dpad-btn.up{grid-area:1/2;}' +
+    '.sense-hat-dpad-btn.left{grid-area:2/1;}' +
+    '.sense-hat-dpad-btn.middle{grid-area:2/2;}' +
+    '.sense-hat-dpad-btn.right{grid-area:2/3;}' +
+    '.sense-hat-dpad-btn.down{grid-area:3/2;}';
+
+  function injectStyles() {
+    if (typeof document === 'undefined') { return; }
+    if (document.getElementById('sense-hat-styles')) { return; }
+    var style = document.createElement('style');
+    style.id = 'sense-hat-styles';
+    style.textContent = SENSE_HAT_CSS;
+    document.head.appendChild(style);
+  }
+
+  function blankPixels() {
+    var a = [];
+    for (var i = 0; i < 64; i++) { a.push([0, 0, 0]); }
+    return a;
+  }
+  function makeZeroGamma() {
+    var a = [];
+    for (var i = 0; i < 32; i++) { a.push(0); }
+    return a;
+  }
+  function defaultRtimu() {
+    return {
+      pressure: [1, 0], temperature: [1, 0], humidity: [1, 0],
+      gyro: [0, 0, 0], accel: [0, 0, 0], compass: [0, 0, 0], fusionPose: [0, 0, 0]
+    };
+  }
+  function now() { return Date.now(); }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function buildDpad() {
+    var el = document.createElement('div');
+    el.className = 'sense-hat-dpad';
+    var defs = [
+      { direction: 'up',     label: '▲', cls: 'up' },
+      { direction: 'left',   label: '◀', cls: 'left' },
+      { direction: 'middle', label: '●', cls: 'middle' },
+      { direction: 'right',  label: '▶', cls: 'right' },
+      { direction: 'down',   label: '▼', cls: 'down' }
+    ];
+    var buttons = defs.map(function(d) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sense-hat-dpad-btn ' + d.cls;
+      b.setAttribute('aria-label', 'joystick ' + d.direction);
+      b.textContent = d.label;
+      el.appendChild(b);
+      return { el: b, direction: d.direction };
+    });
+    return { el: el, buttons: buttons };
+  }
+
+  function buildUI($target) {
+    var wrap = document.createElement('div');
+    wrap.className = 'sense-hat';
+    var canvas = document.createElement('canvas');
+    canvas.className = 'sense-hat-matrix';
+    canvas.width = 256;
+    canvas.height = 256;
+    wrap.appendChild(canvas);
+    var dpad = buildDpad();
+    wrap.appendChild(dpad.el);
+    $target.empty().append(wrap);
+    return {
+      root: wrap,
+      canvas: canvas,
+      ctx: canvas.getContext('2d'),
+      dpad: dpad,
+      teardownDom: function() {
+        if (wrap.parentNode) { wrap.parentNode.removeChild(wrap); }
+      }
+    };
+  }
+
+  function paint(ui, cells) {
+    var ctx = ui.ctx, size = ui.canvas.width, n = 8, cs = size / n, pad = cs * 0.12;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, size, size);
+    for (var i = 0; i < 64; i++) {
+      var x = (i % n) * cs, y = Math.floor(i / n) * cs;
+      ctx.fillStyle = cells[i];
+      roundRect(ctx, x + pad, y + pad, cs - 2 * pad, cs - 2 * pad, (cs - 2 * pad) * 0.25);
+      ctx.fill();
+    }
+  }
+
+  function ensureFocusable(el) {
+    if (!el.getAttribute('tabindex')) { el.setAttribute('tabindex', '0'); }
+    if (!el.getAttribute('role')) { el.setAttribute('role', 'application'); }
+    try { el.focus(); } catch (e) { /* ignore */ }
+  }
+
+  function wireInput(ui, stick) {
+    function down(direction, isRepeat) {
+      if (!direction) { return; }
+      pushStickEvent(stick, direction, isRepeat ? STATE.hold : STATE.press, now());
+    }
+    function up(direction) {
+      if (!direction) { return; }
+      pushStickEvent(stick, direction, STATE.release, now());
+    }
+    function onKeyDown(e) {
+      var d = keyToDirection(e.key);
+      if (!d) { return; }
+      e.preventDefault();
+      down(d, e.repeat);
+    }
+    function onKeyUp(e) {
+      var d = keyToDirection(e.key);
+      if (!d) { return; }
+      e.preventDefault();
+      up(d);
+    }
+    ui.root.addEventListener('keydown', onKeyDown);
+    ui.root.addEventListener('keyup', onKeyUp);
+
+    var dpadHandlers = [];
+    ui.dpad.buttons.forEach(function(btn) {
+      function pd(e) { e.preventDefault(); ui.root.focus(); down(btn.direction, false); }
+      function pu(e) { e.preventDefault(); up(btn.direction); }
+      btn.el.addEventListener('pointerdown', pd);
+      btn.el.addEventListener('pointerup', pu);
+      btn.el.addEventListener('pointerleave', pu);
+      dpadHandlers.push([btn.el, pd, pu]);
+    });
+
+    return function detach() {
+      ui.root.removeEventListener('keydown', onKeyDown);
+      ui.root.removeEventListener('keyup', onKeyUp);
+      dpadHandlers.forEach(function(h) {
+        h[0].removeEventListener('pointerdown', h[1]);
+        h[0].removeEventListener('pointerup', h[2]);
+        h[0].removeEventListener('pointerleave', h[2]);
+      });
+    };
+  }
+
+  // On Stop, the embed sets window.Sk_interrupt = true. A program blocked in
+  // stick.wait_for_event()/_read is a Promise-suspension that our normal poll
+  // can't break, so emit a keyboardinterrupt into the stick to abort it.
+  function wireAbort(stick) {
+    var fired = false;
+    var handle = setInterval(function() {
+      if (typeof window !== 'undefined' && window.Sk_interrupt === true) {
+        if (!fired) {
+          fired = true;
+          stick.emit('sensestick.input', { type: 'keyboardinterrupt' });
+        }
+      } else {
+        fired = false;
+      }
+    }, 100);
+    return function detach() { clearInterval(handle); };
+  }
+
+  function init(config, $target) {
+    // idempotent re-runs: tear down any prior instance
+    if (typeof Sk !== 'undefined' && Sk.sense_hat &&
+        typeof Sk.sense_hat._destroy === 'function') {
+      Sk.sense_hat._destroy();
+    }
+    injectStyles();
+
+    var stick = makeStick();
+    Sk.sense_hat = {
+      pixels: blankPixels(),
+      low_light: false,
+      gamma: makeZeroGamma(),
+      rtimu: defaultRtimu(),
+      sensestick: stick
+    };
+
+    var ui = buildUI($target);
+    ensureFocusable(ui.root);
+
+    function render() {
+      paint(ui, pixelsToCells(Sk.sense_hat.pixels, Sk.sense_hat.low_light));
+    }
+
+    // init, setpixels, setpixel, changeLowlight, setGamma -> repaint from state
+    Sk.sense_hat_emit = function(/* event, arg */) {
+      render();
+    };
+
+    var detachInput = wireInput(ui, stick);
+    var detachAbort = wireAbort(stick);
+
+    Sk.sense_hat._destroy = function() {
+      detachInput();
+      detachAbort();
+      ui.teardownDom();
+    };
+
+    render(); // paint the blank grid immediately
+    return Sk.sense_hat._destroy;
+  }
+
   return {
+    init: init,
     makeStick: makeStick,
     keyToDirection: keyToDirection,
     makeInputEvent: makeInputEvent,

@@ -114,3 +114,9 @@ describe('SenseHat.pixelsToCells', function() {
     expect(cells[0]).to.equal('rgb(10,0,0)');
   });
 });
+
+describe('SenseHat.init', function() {
+  it('is exposed as a function', function() {
+    expect(SenseHat.init).to.be.a('function');
+  });
+});
