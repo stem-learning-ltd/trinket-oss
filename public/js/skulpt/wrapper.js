@@ -30,7 +30,7 @@ var oneLineEval     = 'evaluationresult = ',
     comment         = /^\s*#/;
 
 var LOADED_EXTERNAL_LIBRARIES = {};
-var GRAPHICS_LIBRARIES_REGEXP = /^(turtle|processing|matplotlib\.pyplot|image)$/i;
+var GRAPHICS_LIBRARIES_REGEXP = /^(turtle|processing|matplotlib\.pyplot|image|sense_hat)$/i;
 var destroyGraphicsFn;
 var defaultGraphicsSetup = {
   turtle : function(config, $target) {
@@ -123,6 +123,13 @@ var defaultGraphicsSetup = {
     return $target.html(
       '<div id="' + matplotlibCanvasId + '"></div>'
     );
+  },
+  'sense_hat' : function(config, $target) {
+    var senseHatUrl = trinketConfig.prefix('/js/embed/sense_hat.js');
+    $target.data("graphicMode", "sense_hat");
+    return loadExternalLibraryInternal_(senseHatUrl, true).then(function() {
+      return SenseHat.init(config, $target);
+    });
   }
 };
 var defaultExternalLibraries = {
