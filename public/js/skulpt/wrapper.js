@@ -30,7 +30,9 @@ var oneLineEval     = 'evaluationresult = ',
     comment         = /^\s*#/;
 
 var LOADED_EXTERNAL_LIBRARIES = {};
-var GRAPHICS_LIBRARIES_REGEXP = /^(turtle|processing|matplotlib\.pyplot|image|sense_hat)$/i;
+// Loaded from /js/skulpt/graphics_libraries.js (bundled before this file).
+var GraphicsLibraries = window.SkulptGraphicsLibraries;
+var GRAPHICS_LIBRARIES_REGEXP = GraphicsLibraries.GRAPHICS_LIBRARIES_REGEXP;
 var destroyGraphicsFn;
 var defaultGraphicsSetup = {
   turtle : function(config, $target) {
@@ -540,8 +542,17 @@ function SkRuntimeConfig(config, lastExecution, safeWrite, code, onComplete, onE
           return 'Graphics libraries are not allowed';
         }
 
-        if (graphicsLibrary !== undefined && graphicsLibrary !== library) {
+        var decision = GraphicsLibraries.importDecision(graphicsLibrary, library);
+
+        if (decision === 'conflict') {
           return 'You may only use a single graphics library at a time and the ' + graphicsLibrary + ' library is already in use.'
+        }
+
+        // A graphics library's own internal dependency (e.g. sense_hat's
+        // `from image import Image`): let it import, but run no setup and keep
+        // the owning library active so its display is not torn down.
+        if (decision === 'ignore') {
+          return;
         }
 
         if (typeof(config.onGraphicsInit) === 'function') {
