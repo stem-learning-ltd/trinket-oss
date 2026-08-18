@@ -315,6 +315,7 @@ app:
     common:
       skulpt_js:
         - '/js/skulpt/signal.js'
+        - '/js/skulpt/graphics_libraries.js'
         - '/js/skulpt/wrapper.js'
     logClientCodeError: true
     logClientMetric: true
