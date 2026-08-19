@@ -42,6 +42,13 @@ const path           = require('path');
 
 const cache_control = 'private, s-maxage=0, max-age=0, no-cache, no-store, must-revalidate, proxy-revalidate';
 
+// ENG-2239: cache-prefixed asset URLs embed a deploy-stable version (see
+// config/app.config.js), so their content is immutable for the life of that
+// URL — safe to let browsers and Cloudflare cache them hard instead of
+// re-downloading the whole frontend through the app on every page view.
+const static_cache_control = 'public, max-age=31536000, immutable';
+const isVersionedAsset = (requestPath) => requestPath.startsWith('/' + config.app.cachePrefix);
+
 // Main async initialization
 const init = async () => {
   // Validate required configuration
@@ -186,9 +193,14 @@ const init = async () => {
       }
     }
     else if (response.header) {
-      response.header('Cache-Control', cache_control);
-      response.header('Pragma', 'no-cache');
-      response.header('Expires', '0');
+      if (isVersionedAsset(request.path)) {
+        response.header('Cache-Control', static_cache_control);
+      }
+      else {
+        response.header('Cache-Control', cache_control);
+        response.header('Pragma', 'no-cache');
+        response.header('Expires', '0');
+      }
 
       if (addXFrame) {
         response.header('X-Frame-Options', 'deny');
