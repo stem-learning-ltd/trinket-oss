@@ -50,7 +50,40 @@ module.exports = function() {
       // old version; the cache-prefix-{timestamp} wildcard route must serve it
       flow.get('/cache-prefix-1234567890/js/trinket.js').end(function(err, res) {
         res.statusCode.should.eql(200);
+        // ...but never hard-cached: during a rolling deploy this route serves
+        // whatever content THIS machine has for ANY version string, so an
+        // immutable header here would let shared caches pin one deploy's
+        // content under another deploy's URL for a year
+        res.headers['cache-control'].should.contain('no-store');
+        res.headers['cache-control'].should.not.contain('immutable');
         done();
+      });
+    });
+
+    it('serves errors under asset URLs with no-store, not the HTML error page', function(done) {
+      // asset URLs are now stable and shared by every user, so a cached error
+      // response would be served to everyone — keep errors uncacheable
+      flow.get(expectedPrefix + 'js/no-such-file.js').end(function(err, res) {
+        res.statusCode.should.eql(404);
+        res.headers['cache-control'].should.contain('no-store');
+        done();
+      });
+    });
+
+    describe('when logged in', function() {
+      before(function(done) { flow.switchUser('user', done); });
+      after(function() { flow.switchUser(''); });
+
+      it('never sets a session cookie on a cacheable asset response', function(done) {
+        // the sliding-expiration session touch must skip asset requests:
+        // Set-Cookie on a public, immutable response would let a shared cache
+        // replay one user's session cookie to other users
+        flow.get(expectedPrefix + 'js/trinket.js').end(function(err, res) {
+          res.statusCode.should.eql(200);
+          res.headers['cache-control'].should.eql('public, max-age=31536000, immutable');
+          should.not.exist(res.headers['set-cookie']);
+          done();
+        });
       });
     });
 

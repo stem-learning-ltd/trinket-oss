@@ -36,6 +36,7 @@ try {
 }
 const mailer         = require('./lib/util/mailer');
 const viewEngine     = require('./lib/util/nunjucks');
+const assetVersion   = require('./lib/util/assetVersion');
 const CatboxMongoose = require('./lib/util/catbox-mongoose');
 const fs             = require('fs');
 const path           = require('path');
@@ -46,8 +47,15 @@ const cache_control = 'private, s-maxage=0, max-age=0, no-cache, no-store, must-
 // config/app.config.js), so their content is immutable for the life of that
 // URL — safe to let browsers and Cloudflare cache them hard instead of
 // re-downloading the whole frontend through the app on every page view.
+// Only URLs carrying THIS process's version may be hard-cached: the
+// cache-prefix-{timestamp} wildcard route serves *any* version string with
+// whatever content this machine has, so during a rolling deploy an immutable
+// mismatched-version response would pin one deploy's content under another
+// deploy's URL in shared caches until the following deploy.
 const static_cache_control = 'public, max-age=31536000, immutable';
-const isVersionedAsset = (requestPath) => requestPath.startsWith('/' + config.app.cachePrefix);
+const isVersionedAssetPath = (requestPath) => requestPath.startsWith('/' + config.app.cachePrefix);
+const isCurrentVersionedAsset = (requestPath) =>
+  requestPath.startsWith('/' + config.app.cachePrefix + assetVersion + '/');
 
 // Main async initialization
 const init = async () => {
@@ -128,8 +136,13 @@ const init = async () => {
         if (cb) cb(null);
       };
 
-      // Sliding expiration: touch session to reset TTL on each authenticated request
-      if (request.yar.get('userId')) {
+      // Sliding expiration: touch session to reset TTL on each authenticated
+      // request — but never on versioned-asset requests: touch() marks the
+      // session modified, which makes yar re-state the session cookie, and a
+      // Set-Cookie must never ride on a publicly cacheable response (a shared
+      // cache could replay one user's session to another). Skipping also saves
+      // a session cache write per asset request.
+      if (request.yar.get('userId') && !isVersionedAssetPath(request.path)) {
         request.yar.touch();
       }
     }
@@ -160,6 +173,17 @@ const init = async () => {
 
     if (response.isBoom) {
       const statusCode = response.output.statusCode;
+
+      // Errors under /cache-prefix-* (missing file, malformed asset URL) go
+      // out as-is with explicit no-store headers — never the HTML error view,
+      // and never uncontrolled headers an intermediary could cache under an
+      // asset URL that is now stable and shared by every user.
+      if (isVersionedAssetPath(request.path)) {
+        response.output.headers['Cache-Control'] = cache_control;
+        response.output.headers['Pragma'] = 'no-cache';
+        response.output.headers['Expires'] = '0';
+        return h.continue;
+      }
 
       // Check if this is an HTML request (not API/JSON)
       const acceptHeader = request.headers.accept || '';
@@ -193,7 +217,7 @@ const init = async () => {
       }
     }
     else if (response.header) {
-      if (isVersionedAsset(request.path)) {
+      if (isCurrentVersionedAsset(request.path)) {
         response.header('Cache-Control', static_cache_control);
       }
       else {
