@@ -154,7 +154,14 @@ const httpServer = createServer(handleHttpRequest);
 const io = new Server(httpServer, {
   cors: {
     origin: config.get('manager.corsOrigins')
-  }
+  },
+  // ENG-2169: every 'console' message carries ALL trinket files JSON-
+  // serialized, so a large data file blows the engine.io default of 1MB —
+  // which doesn't error, it silently kills the connection. 16MB covers the
+  // app's 10MB trinket-save cap plus JSON wire-escaping overhead. Must match
+  // the shell's value (shell/trinket/server.js) — the same payload is
+  // relayed there.
+  maxHttpBufferSize: 16 * 1024 * 1024
 });
 
 let connections = 0;
