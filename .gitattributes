@@ -1,0 +1,4 @@
+# Shell scripts are COPY'd into Linux Docker images (e.g. the pygame worker
+# entrypoint) — CRLF in a shebang breaks exec, so force LF regardless of
+# core.autocrlf on the checkout machine.
+*.sh text eol=lf
