@@ -1,1 +1,12 @@
 **/.git
+**/node_modules
+
+# Local-only config state — must never reach an image (ENG-2209).
+
+# runtime.json is node-config 0.4.x's runtime-persistence file and loads as
+
+# the HIGHEST-priority layer, above production.yaml and even $NODE_CONFIG.
+
+config/runtime.json
+config/runtime.json.tmp-*
+config/local.yaml
