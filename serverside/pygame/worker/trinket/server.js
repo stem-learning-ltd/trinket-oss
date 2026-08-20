@@ -25,7 +25,11 @@ const io = new Server(PORT, {
     origin: config.get('shell.cors.origin'),
     credentials: true,
     methods: ['GET', 'POST']
-  }
+  },
+  // ENG-2169: the manager relays the browser's whole trinket (all files in
+  // one 'eval' message); the engine.io default of 1MB silently drops the
+  // connection for big data files. Must match the manager's value.
+  maxHttpBufferSize: 16 * 1024 * 1024
 });
 
 console.log(`Pygame shell listening on port ${PORT}`);

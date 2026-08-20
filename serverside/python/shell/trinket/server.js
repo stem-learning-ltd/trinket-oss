@@ -35,7 +35,10 @@ try {
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
-  // options
+  // ENG-2169: the manager relays the browser's whole trinket (all files in
+  // one 'console' message); the engine.io default of 1MB silently drops the
+  // connection for big data files. Must match the manager's value.
+  maxHttpBufferSize: 16 * 1024 * 1024
 });
 
 const python = '/usr/local/bin/python3';

@@ -112,7 +112,15 @@ const server = createServer(handleHttpRequest);
 const io = new Server(server, {
   cors: {
     origin: config.get('manager.corsOrigins')
-  }
+  },
+  // ENG-2169: a run arrives as ONE socket.io message carrying every trinket
+  // file JSON-serialized, so a large data file (e.g. 650k-line txt ~5.5MB on
+  // the wire) blows the engine.io default of 1MB — which doesn't error, it
+  // silently kills the connection ("Disconnected" in the embed). 16MB covers
+  // the app's 10MB trinket-save cap plus JSON wire-escaping overhead. Must
+  // match the worker's value (server.js) — the manager relays the same
+  // payload there via 'eval'.
+  maxHttpBufferSize: 16 * 1024 * 1024
 });
 
 console.log(`Pygame manager starting on ${HOST}:${PORT}`);
