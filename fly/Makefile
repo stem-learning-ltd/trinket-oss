@@ -197,8 +197,11 @@ deploy-pygame-manager:
 deploy-exec:
 	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.exec.toml --ha=false
 
+# ASSET_VERSION stamps this build's static-asset URLs (ENG-2239): stable
+# across both Machines (same image), changes every deploy (cache bust).
 deploy-app:
-	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.app.toml --ha=false
+	$(FLY) deploy $(REPO) -c $(FLY_DIR)/fly.app.toml --ha=false \
+	  --build-arg ASSET_VERSION=$$(date -u +%Y%m%d%H%M%S)
 
 deploy: deploy-python3-shell deploy-python3-manager deploy-pygame-worker \
         deploy-pygame-manager deploy-exec deploy-app

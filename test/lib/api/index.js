@@ -8,7 +8,8 @@ var db       = require('../../helpers/db'),
     'profile',
     'logout',
     'forgot_pass',
-    'trinket'
+    'trinket',
+    'assets'
   ];
 
 describe('API tests', function() {

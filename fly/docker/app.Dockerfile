@@ -44,6 +44,14 @@ RUN npm run build
 # default.yaml < production.yaml < $NODE_CONFIG (JSON env var, set as a Fly secret)
 RUN cp fly/config/app/production.yaml config/production.yaml
 
+# Deploy-stable asset version (ENG-2239): both Machines run this image, so
+# they mint identical /cache-prefix-<version>/ asset URLs and browsers/
+# Cloudflare can cache the frontend; the next build changes the version and
+# busts the cache. Set by fly/Makefile deploy-app (--build-arg). Declared this
+# late so it never invalidates the npm install layers above.
+ARG ASSET_VERSION
+ENV ASSET_VERSION=${ASSET_VERSION}
+
 ENV NODE_ENV=production
 
 EXPOSE 3000
