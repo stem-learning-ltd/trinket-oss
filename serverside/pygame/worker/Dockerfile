@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-dev \
     python3-tk \
+    # PIL: python3-pil already arrives via novnc's deps, but Ubuntu splits
+    # ImageTk into its own package that nothing pulls in (ENG-2059)
+    python3-pil \
+    python3-pil.imagetk \
     # X11/VNC
     tightvncserver \
     xvfb \
