@@ -108,16 +108,25 @@
     }
   }
 
+  // The embed page ships Foundation, whose bare `button` rule adds 2rem side
+  // padding (overflowing the 40px grid tracks so buttons overlap), a bottom
+  // margin, white text and a blue :hover/:focus at specificity 0-1-1 — so the
+  // D-pad buttons must own every one of those properties, and the state rules
+  // need 0-2-1 selectors to win regardless of stylesheet order.
   var SENSE_HAT_CSS =
     '.sense-hat{display:flex;flex-direction:column;align-items:center;' +
     'gap:12px;padding:12px;outline:none;}' +
     '.sense-hat-matrix{width:16rem;height:16rem;max-width:92%;' +
     'aspect-ratio:1/1;background:#111;border-radius:8px;touch-action:none;}' +
     '.sense-hat-dpad{display:grid;grid-template-columns:repeat(3,40px);' +
-    'grid-template-rows:repeat(3,40px);gap:4px;}' +
-    '.sense-hat-dpad-btn{border:1px solid #888;background:#f4f4f4;' +
-    'border-radius:6px;cursor:pointer;font-size:14px;line-height:1;' +
-    'touch-action:none;}' +
+    'grid-template-rows:repeat(3,40px);gap:6px;}' +
+    '.sense-hat-dpad-btn{margin:0;padding:0;border:1px solid #1a1a1a;' +
+    'background:#333;color:#fff;border-radius:6px;cursor:pointer;' +
+    'font-size:16px;line-height:1;touch-action:none;' +
+    'transition:background-color 60ms ease-out;}' +
+    '.sense-hat-dpad .sense-hat-dpad-btn:hover,' +
+    '.sense-hat-dpad .sense-hat-dpad-btn:focus{background:#4d4d4d;color:#fff;}' +
+    '.sense-hat-dpad .sense-hat-dpad-btn:active{background:#606060;}' +
     '.sense-hat-dpad-btn.up{grid-area:1/2;}' +
     '.sense-hat-dpad-btn.left{grid-area:2/1;}' +
     '.sense-hat-dpad-btn.middle{grid-area:2/2;}' +
