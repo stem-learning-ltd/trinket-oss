@@ -115,6 +115,71 @@ describe('SenseHat.pixelsToCells', function() {
   });
 });
 
+describe('SenseHat.SENSOR_SPECS', function() {
+  it('defines temperature over the bridge\'s valid range (-40..120 C)', function() {
+    var spec = SenseHat.SENSOR_SPECS.temperature;
+    expect(spec.min).to.equal(-40);
+    expect(spec.max).to.equal(120);
+    expect(spec.step).to.equal(1);
+    expect(spec.initial).to.equal(25);
+  });
+});
+
+describe('SenseHat.clampSensorValue', function() {
+  it('passes through an in-range value', function() {
+    expect(SenseHat.clampSensorValue('temperature', 30)).to.equal(30);
+  });
+  it('coerces the numeric strings range inputs produce', function() {
+    expect(SenseHat.clampSensorValue('temperature', '25')).to.equal(25);
+  });
+  it('clamps below the minimum', function() {
+    expect(SenseHat.clampSensorValue('temperature', -100)).to.equal(-40);
+  });
+  it('clamps above the maximum', function() {
+    expect(SenseHat.clampSensorValue('temperature', 500)).to.equal(120);
+  });
+  it('returns null for non-numeric input', function() {
+    expect(SenseHat.clampSensorValue('temperature', 'abc')).to.equal(null);
+    expect(SenseHat.clampSensorValue('temperature', NaN)).to.equal(null);
+  });
+  it('returns null for unknown sensors', function() {
+    expect(SenseHat.clampSensorValue('flux', 30)).to.equal(null);
+  });
+});
+
+describe('SenseHat.applySensorValue', function() {
+  function freshState() {
+    return { rtimu: { temperature: [1, 0] } };
+  }
+  it('writes the [valid, value] pair the bridge reads', function() {
+    var state = freshState();
+    var applied = SenseHat.applySensorValue(state, 'temperature', 30);
+    expect(applied).to.equal(30);
+    expect(state.rtimu.temperature).to.deep.equal([1, 30]);
+  });
+  it('clamps out-of-range values before writing', function() {
+    var state = freshState();
+    var applied = SenseHat.applySensorValue(state, 'temperature', 500);
+    expect(applied).to.equal(120);
+    expect(state.rtimu.temperature).to.deep.equal([1, 120]);
+  });
+  it('leaves state untouched and returns null for non-numeric input', function() {
+    var state = freshState();
+    var applied = SenseHat.applySensorValue(state, 'temperature', 'abc');
+    expect(applied).to.equal(null);
+    expect(state.rtimu.temperature).to.deep.equal([1, 0]);
+  });
+});
+
+describe('SenseHat.formatSensorReadout', function() {
+  it('formats temperature like the OG trinket readout', function() {
+    expect(SenseHat.formatSensorReadout('temperature', 25)).to.equal('25° C');
+  });
+  it('handles negative values', function() {
+    expect(SenseHat.formatSensorReadout('temperature', -40)).to.equal('-40° C');
+  });
+});
+
 describe('SenseHat.init', function() {
   it('is exposed as a function', function() {
     expect(SenseHat.init).to.be.a('function');

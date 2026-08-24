@@ -96,6 +96,41 @@
     });
   }
 
+  // --- environmental sensors (ENG-2289) ---
+  // The bridge (_internal_sense_hat.js) reads Sk.sense_hat.rtimu.<name> as a
+  // [valid, value] pair on every Python call and re-checks the range each
+  // time, so a slider only has to keep that pair updated. Ranges below are
+  // the bridge's own valid ranges — anything the slider can produce is a
+  // reading get_temperature() will accept.
+  var SENSOR_SPECS = {
+    temperature: { min: -40, max: 120, step: 1, initial: 25, unit: '° C', icon: '🌡️' }
+  };
+
+  // Last slider positions, kept across re-runs within the page so Run doesn't
+  // reset a learner's chosen value.
+  var sensorValues = {};
+
+  function clampSensorValue(name, raw) {
+    var spec = SENSOR_SPECS[name];
+    if (!spec) { return null; }
+    var n = parseFloat(raw);
+    if (isNaN(n) || !isFinite(n)) { return null; }
+    if (n < spec.min) { return spec.min; }
+    if (n > spec.max) { return spec.max; }
+    return n;
+  }
+
+  function applySensorValue(state, name, raw) {
+    var value = clampSensorValue(name, raw);
+    if (value === null) { return null; }
+    state.rtimu[name] = [1, value];
+    return value;
+  }
+
+  function formatSensorReadout(name, value) {
+    return value + SENSOR_SPECS[name].unit;
+  }
+
   // --- keyboard mapping ---
   function keyToDirection(key) {
     switch (key) {
@@ -118,6 +153,18 @@
     'gap:12px;padding:12px;outline:none;}' +
     '.sense-hat-matrix{width:16rem;height:16rem;max-width:92%;' +
     'aspect-ratio:1/1;background:#111;border-radius:8px;touch-action:none;}' +
+    // Sensor rows: Foundation's bare `label` rule sets display:block, 0.875rem
+    // and #4d4d4d at 0-0-1, so the row class owns those; range inputs are
+    // untouched by Foundation but margin/width are set anyway for safety.
+    '.sense-hat-sensors{display:flex;flex-direction:column;gap:8px;' +
+    'width:16rem;max-width:92%;}' +
+    '.sense-hat-sensor{display:flex;align-items:center;gap:8px;margin:0;' +
+    'padding:0;color:#333;font-size:14px;line-height:1;cursor:pointer;}' +
+    '.sense-hat-sensor-icon{font-size:16px;}' +
+    '.sense-hat-sensor-slider{flex:1;min-width:0;width:auto;margin:0;' +
+    'padding:0;accent-color:#2879d0;}' +
+    '.sense-hat-sensor-readout{min-width:3.5em;text-align:right;' +
+    'font-variant-numeric:tabular-nums;}' +
     '.sense-hat-dpad{display:grid;grid-template-columns:repeat(3,40px);' +
     'grid-template-rows:repeat(3,40px);gap:6px;}' +
     '.sense-hat-dpad-btn{margin:0;padding:0;border:1px solid #1a1a1a;' +
@@ -192,9 +239,50 @@
     return { el: el, buttons: buttons };
   }
 
-  function buildUI($target) {
+  // One row per SENSOR_SPECS entry: icon | slider | readout. Applies the
+  // persisted (or initial) value into state.rtimu immediately so the sensor
+  // reads correctly before the slider is ever touched.
+  function buildSensors(state) {
+    var el = document.createElement('div');
+    el.className = 'sense-hat-sensors';
+    Object.keys(SENSOR_SPECS).forEach(function(name) {
+      var spec = SENSOR_SPECS[name];
+      var row = document.createElement('label');
+      row.className = 'sense-hat-sensor';
+      var icon = document.createElement('span');
+      icon.className = 'sense-hat-sensor-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = spec.icon;
+      var input = document.createElement('input');
+      input.type = 'range';
+      input.className = 'sense-hat-sensor-slider';
+      input.min = spec.min;
+      input.max = spec.max;
+      input.step = spec.step;
+      input.setAttribute('aria-label', name);
+      var readout = document.createElement('span');
+      readout.className = 'sense-hat-sensor-readout';
+      function apply(raw) {
+        var value = applySensorValue(state, name, raw);
+        if (value === null) { return; }
+        sensorValues[name] = value;
+        readout.textContent = formatSensorReadout(name, value);
+      }
+      input.value = sensorValues.hasOwnProperty(name) ? sensorValues[name] : spec.initial;
+      apply(input.value);
+      input.addEventListener('input', function() { apply(input.value); });
+      row.appendChild(icon);
+      row.appendChild(input);
+      row.appendChild(readout);
+      el.appendChild(row);
+    });
+    return el;
+  }
+
+  function buildUI($target, state) {
     var wrap = document.createElement('div');
     wrap.className = 'sense-hat';
+    wrap.appendChild(buildSensors(state));
     var canvas = document.createElement('canvas');
     canvas.className = 'sense-hat-matrix';
     canvas.width = 256;
@@ -242,13 +330,18 @@
       if (!direction) { return; }
       pushStickEvent(stick, direction, STATE.release, now());
     }
+    // Keys from a focused sensor slider stay with the slider — otherwise
+    // arrows would fire joystick events and preventDefault would stop the
+    // slider moving.
     function onKeyDown(e) {
+      if (e.target && e.target.tagName === 'INPUT') { return; }
       var d = keyToDirection(e.key);
       if (!d) { return; }
       e.preventDefault();
       down(d, e.repeat);
     }
     function onKeyUp(e) {
+      if (e.target && e.target.tagName === 'INPUT') { return; }
       var d = keyToDirection(e.key);
       if (!d) { return; }
       e.preventDefault();
@@ -316,7 +409,7 @@
     Sk.sense_hat = state;
 
     var destroyed = false;
-    var ui = buildUI($target);
+    var ui = buildUI($target, state);
     ensureFocusable(ui.root);
 
     function render() {
@@ -354,6 +447,10 @@
     makeInputEvent: makeInputEvent,
     pushStickEvent: pushStickEvent,
     pixelsToCells: pixelsToCells,
+    SENSOR_SPECS: SENSOR_SPECS,
+    clampSensorValue: clampSensorValue,
+    applySensorValue: applySensorValue,
+    formatSensorReadout: formatSensorReadout,
     KEY_CODES: KEY_CODES,
     STATE: STATE
   };
