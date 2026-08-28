@@ -614,6 +614,18 @@ above `hard_limit`).
 match.** Never `fly scale count` the worker above 1 — a second Machine would
 carry its own separate display pool the manager can't see.
 
+**The manager→worker Socket.IO client must stay `transports: ['websocket']`**
+(`connectToWorker` in `serverside/pygame/manager/manager.js`, same as the
+python3 manager→shell leg). Found by the first 30-session stress test
+(2026-08-28): with Socket.IO's default polling-first handshake, each session
+opened several short-lived HTTP connections through fly-proxy, all counted
+against the worker's `:8010` `hard_limit`; the limit tripped at ~7 sessions
+(worker log: "reached hard limit of 40 concurrent connections") and the other
+23 students got `xhr poll error` → `shell connect error` — with the display
+pool otherwise empty. A failed session also keeps its display until the browser
+disconnects, so the symptom can look like `busy` on the next attempt. One
+websocket per session is what the connection limits are sized for.
+
 #### Raising the stopgap limit (how-to)
 
 **Current setting: N = 30** (one full class) on **performance-16x / 32GB**,
@@ -626,8 +638,16 @@ multiple overlapping classes is still ENG-1906 territory):
 
 1. Pick the new number `N` and a VM to fit it. Budget roughly **0.5–1 GB RAM
    and a meaningful share of a CPU per concurrent session** (a running game is
-   a continuous process). Rough guide: performance-4x/8GB ≈ 8–12, performance-8x/16GB
-   ≈ 16–24, performance-16x/32GB ≈ 30 — **confirm by load-testing**, games vary a lot.
+   a continuous process). **Measured 2026-08-28** with `scripts/pygame-stress`
+   (30 sessions, 60 fps bouncing-balls game + a VNC viewer each) on
+   performance-16x/32GB: **~50% CPU (≈8 cores busy), load average ≈ core
+   count from 30 synchronised frame loops, 1.2 GB RAM total** (~40 MB per
+   game+Xvnc — memory is not the constraint, CPU is), VNC egress 0.36 GB per
+   session-hour. So ~¼ core per light game; performance-8x would run at ~100%
+   and stutter, performance-12x/24GB (~67%) is the smallest sensible size,
+   16x leaves room for heavier real games. NB a student loop with no
+   `clock.tick()` burns a whole core — 30 of those saturate any VM.
+   **Confirm by load-testing** after any change; games vary a lot.
 2. Edit these, keeping the display counts identical:
    - `fly/fly.pygame-worker.toml` → `[env]` `PYGAME_DISPLAYS = "N"`; `[[vm]]`
      `size`/`memory` to fit; **both** `[services.concurrency]` blocks (`:8010`
@@ -640,8 +660,17 @@ multiple overlapping classes is still ENG-1906 territory):
    ```sh
    make -C fly deploy-pygame-worker deploy-pygame-manager
    ```
-4. Load-test: open ~N pygame sessions and watch the worker's CPU
-   (`fly machine list`/metrics). If games stutter, lower `N` or use a bigger VM.
+4. Load-test with `scripts/pygame-stress/stress.mjs` (see its README): it
+   opens N real sessions — Socket.IO run + a VNC viewer each — and samples the
+   worker's CPU/memory over `fly ssh`:
+   ```sh
+   node scripts/pygame-stress/stress.mjs --sessions N --duration 120 --metrics \
+     --page https://ide.stem.org.uk/embed/pygame/<trinketId>
+   ```
+   Any `busy` with ≤ N sessions means a display-count or `hard_limit`
+   mismatch (or someone else is running pygame — check the manager's logs).
+   If the worker sits above ~85% CPU, lower `N` or use a bigger VM;
+   well under half and `performance-8x/32gb` (−34%) is worth trying.
 
 There's a hard ceiling here — it's one Machine. Past what a single (large) VM
 can do, or once multiple classes/schools overlap, it needs the real scale-out

@@ -43,13 +43,18 @@ primary_region = "lhr"
 
   [services.concurrency]
     # One :8010 connection per active session (the manager opens a fresh
-    # socket per browser — connectToWorker uses forceNew). hard_limit is the
-    # real cap: fly-proxy refuses connections above it, so it MUST be
-    # >= PYGAME_DISPLAYS or displays sit idle. soft = the pool; hard adds
-    # headroom for connect/disconnect overlap (a student re-running).
+    # socket per browser — connectToWorker uses forceNew, websocket-only).
+    # hard_limit is the real cap: fly-proxy refuses connections above it, so
+    # it MUST be >= PYGAME_DISPLAYS or displays sit idle. soft = the pool;
+    # hard adds headroom for connect/disconnect overlap (a student re-running).
+    # "One per session" only holds with transports: ['websocket'] on the
+    # manager side — Socket.IO's default polling-first handshake opens several
+    # short-lived connections per session, and a 30-session burst tripped the
+    # 40 limit at ~7 sessions (worker log: "reached hard limit of 40 concurrent
+    # connections"; 2026-08-28 stress test). Keep the two in step.
     type = "connections"
     soft_limit = 30
-    hard_limit = 40
+    hard_limit = 60
 
   [[services.tcp_checks]]
     interval = "15s"

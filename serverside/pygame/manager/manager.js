@@ -163,7 +163,19 @@ function connectToWorker(browserId) {
 
   const workerSocket = Client(WORKER_URL, {
     forceNew: true,
-    reconnection: false
+    reconnection: false,
+    // websocket only — same fix as the python3 manager→shell leg. Socket.IO's
+    // default polling-first handshake opens several short-lived HTTP
+    // connections per session through fly-proxy, each counted against the
+    // worker's :8010 connection hard_limit. A 30-student class hitting Run
+    // together tripped that limit at ~7 sessions; the other 23 got
+    // "xhr poll error" → 'shell connect error' with the display pool empty
+    // (scripts/pygame-stress, 2026-08-28). One websocket per session is what
+    // the limit is sized for.
+    transports: ['websocket'],
+    // The flycast connection may have to wake the scale-to-zero worker first
+    // (seconds warm, up to ~1 min cold). Socket.IO's default is 20s; be explicit.
+    timeout: 20000
   });
 
   conn.workerSocket = workerSocket;

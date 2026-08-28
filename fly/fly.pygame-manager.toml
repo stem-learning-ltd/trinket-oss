@@ -48,12 +48,17 @@ primary_region = "lhr"
     handlers = []
 
   [services.concurrency]
-    # One browser Socket.IO connection per session (30 displays' worth), plus
-    # headroom for re-run overlap and the brief connections that get a `busy`
-    # reply. Keep hard_limit comfortably above manager.displays.
+    # Browser Socket.IO connections arrive via exec nginx, which opens a NEW
+    # upstream connection per HTTP request — and the frontend's Socket.IO
+    # client starts with long-polling before upgrading to websocket, so during
+    # a class-wide Run burst each browser briefly holds 2–3 connections here
+    # (held long-poll GET + POSTs + the websocket), not 1. Steady state is one
+    # websocket per session (30 displays' worth). hard_limit is a hard refusal
+    # ("Server connection lost" in the embed), so size it for the burst, not
+    # the steady state — it costs nothing to leave headroom.
     type = "connections"
     soft_limit = 40
-    hard_limit = 60
+    hard_limit = 150
 
   [[services.tcp_checks]]
     interval = "15s"
