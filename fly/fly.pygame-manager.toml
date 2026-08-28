@@ -20,7 +20,8 @@ primary_region = "lhr"
   # make secrets-pygame-manager). prefix pygame matches genUrl's path.
   # displays MUST equal the worker's PYGAME_DISPLAYS — the manager assigns a
   # display :1..:displays per session; a mismatch would route a session to a
-  # display the worker isn't running.
+  # display the worker isn't running. 30 = one full class (ENG-1906 decision,
+  # 2026-08-28; was 4) — change it in lockstep with fly.pygame-worker.toml.
   NODE_CONFIG = """
   {
     "manager": {
@@ -28,7 +29,7 @@ primary_region = "lhr"
       "corsOrigins": ["https://ide.stem.org.uk"],
       "genUrl": "https://stem-trinket-generated.t3.tigrisfiles.io/pygame",
       "s3": { "bucket": "stem-trinket-generated", "prefix": "pygame" },
-      "displays": 4
+      "displays": 30
     }
   }
   """
@@ -47,9 +48,12 @@ primary_region = "lhr"
     handlers = []
 
   [services.concurrency]
+    # One browser Socket.IO connection per session (30 displays' worth), plus
+    # headroom for re-run overlap and the brief connections that get a `busy`
+    # reply. Keep hard_limit comfortably above manager.displays.
     type = "connections"
     soft_limit = 40
-    hard_limit = 50
+    hard_limit = 60
 
   [[services.tcp_checks]]
     interval = "15s"
