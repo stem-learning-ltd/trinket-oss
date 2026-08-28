@@ -21,8 +21,12 @@ primary_region = "lhr"
   # entrypoint DOES see [env]) to generate N display programs. MUST equal the
   # manager's manager.displays (fly.pygame-manager.toml NODE_CONFIG). Raising
   # this raises concurrent pygame capacity; size the VM to match (~0.5–1GB and
-  # meaningful CPU per active session).
-  PYGAME_DISPLAYS = "4"
+  # meaningful CPU per active session) AND raise the per-session connection
+  # limits below (:8010 and :6080 each carry one connection per session).
+  #
+  # 30 = one full class running pygame at once (ENG-1906 decision, 2026-08-28:
+  # raise the single-worker cap rather than build scale-out). Was 4.
+  PYGAME_DISPLAYS = "30"
 
 # Socket.IO shell — reached by the pygame manager via
 # stem-trinket-pygame-worker.flycast:8010 (flycast so a stopped worker wakes).
@@ -38,16 +42,21 @@ primary_region = "lhr"
     handlers = []
 
   [services.concurrency]
-    # One :8010 connection per active session; allow the full display pool
-    # (plus a little headroom for connect/disconnect overlap).
+    # One :8010 connection per active session (the manager opens a fresh
+    # socket per browser — connectToWorker uses forceNew). hard_limit is the
+    # real cap: fly-proxy refuses connections above it, so it MUST be
+    # >= PYGAME_DISPLAYS or displays sit idle. soft = the pool; hard adds
+    # headroom for connect/disconnect overlap (a student re-running).
     type = "connections"
-    soft_limit = 4
-    hard_limit = 8
+    soft_limit = 30
+    hard_limit = 40
 
   [[services.tcp_checks]]
     interval = "15s"
     timeout = "5s"
-    # supervisord brings up N× Xvfb + VNC + the token websockify + node shell.
+    # supervisord brings up N× Xvnc + the token websockify + node shell. 60s is
+    # Fly's ceiling for TCP checks (anything higher is lowered to 1m) — fine,
+    # the Xvnc programs start in parallel so 30 come up about as fast as 4.
     grace_period = "60s"
 
 # noVNC token-multiplexing websockify — reached from exec's /pygame-vnc/
@@ -67,6 +76,8 @@ primary_region = "lhr"
     handlers = []
 
   [services.concurrency]
+    # One noVNC websocket per active session: same rule as :8010 —
+    # hard_limit >= PYGAME_DISPLAYS, plus reconnect headroom.
     type = "connections"
     soft_limit = 30
     hard_limit = 40
@@ -77,7 +88,13 @@ primary_region = "lhr"
     grace_period = "60s"
 
 [[vm]]
-  # Sized for ~4 concurrent pygame sessions (each: an Xvfb + a python/pygame
-  # process). Scale this together with PYGAME_DISPLAYS.
-  size = "shared-cpu-4x"
-  memory = "4gb"
+  # Sized for 30 concurrent pygame sessions (each: an Xvnc + a python/pygame
+  # process — roughly ¼–½ a core and 0.25–1GB sustained while a game runs,
+  # per ENG-1906 / fly/README.md "Raising the stopgap limit"). 30 × that is
+  # ~8–15 cores and ~8–30GB, so the largest preset is the one that fits the
+  # upper end; drop to performance-12x/24gb if load-testing shows headroom.
+  # Scale-to-zero still applies, so this is billed only while a class is
+  # actually running pygame. Scale this together with PYGAME_DISPLAYS.
+  # Was shared-cpu-4x/4gb for 4 displays.
+  size = "performance-16x"
+  memory = "32gb"

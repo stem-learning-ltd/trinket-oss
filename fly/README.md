@@ -566,7 +566,11 @@ curl-based uptime probes on the custom domain will get challenge 403s; probe
 - Idle state: 1× app (1GB), 1× python3 manager (512MB) always on; exec, pygame
   manager, shells and worker sleep at ~zero compute cost. Rough idle spend is
   in the $10–20/mo range; classroom-hours peak (2 app + manager + 3 shells +
-  pygame pair) roughly doubles that, pro-rated by the hours they're awake.
+  pygame pair) is dominated by the pygame worker since it was sized for a
+  full class (performance-16x/32GB: $562.78/mo in lhr if it ran 24/7, i.e.
+  ~$0.78 per running hour at Aug 2026 list price — it doesn't run 24/7; it
+  auto-stops, so real cost is ~$0.78 × the hours a class is actually running
+  pygame. Check the Fly dashboard for the live figure).
 - Cold starts: exec nginx wakes in <1s; a shell Machine in a few seconds; the
   pygame worker (supervisord + Xvfb + VNC) up to ~1 min — hence
   `min_machines_running = 1` on the python3 manager but not the pygame tier.
@@ -598,8 +602,13 @@ How a session maps to a display:
   display's VNC.
 
 A **single VNC port with token routing** (not one port per display) means the
-display count lives entirely in `PYGAME_DISPLAYS` — raising it needs **no**
-fly.toml service blocks and **no** exec nginx changes.
+display count lives entirely in `PYGAME_DISPLAYS` — raising it needs **no new**
+fly.toml service blocks and **no** exec nginx changes. It **does** need the
+existing per-session connection limits raised with it: the manager opens one
+`:8010` socket per session (`forceNew`) and each browser holds one `:6080`
+websocket, so a `hard_limit` below `PYGAME_DISPLAYS` on either service caps
+sessions at the limit and leaves displays idle (fly-proxy refuses connections
+above `hard_limit`).
 
 **`PYGAME_DISPLAYS` (worker) and `manager.displays` (manager NODE_CONFIG) MUST
 match.** Never `fly scale count` the worker above 1 — a second Machine would
@@ -607,17 +616,25 @@ carry its own separate display pool the manager can't see.
 
 #### Raising the stopgap limit (how-to)
 
-To increase how many students can run pygame at once (bounded by one Machine —
-genuine multi-class scale is ENG-1906):
+**Current setting: N = 30** (one full class) on **performance-16x / 32GB**,
+set 2026-08-28 as the ENG-1906 decision — raise the single-worker cap instead
+of building elastic scale-out (the WASM spike ruled out browser-side pygame).
+Was 4 on shared-cpu-4x/4GB.
+
+To change how many students can run pygame at once (bounded by one Machine —
+multiple overlapping classes is still ENG-1906 territory):
 
 1. Pick the new number `N` and a VM to fit it. Budget roughly **0.5–1 GB RAM
    and a meaningful share of a CPU per concurrent session** (a running game is
    a continuous process). Rough guide: performance-4x/8GB ≈ 8–12, performance-8x/16GB
-   ≈ 16–24 — **confirm by load-testing**, games vary a lot.
-2. Edit two values, keeping them identical:
-   - `fly/fly.pygame-worker.toml` → `[env]` `PYGAME_DISPLAYS = "N"` (and bump
-     `[[vm]]` `size`/`memory` if needed)
-   - `fly/fly.pygame-manager.toml` → `NODE_CONFIG` `manager.displays: N`
+   ≈ 16–24, performance-16x/32GB ≈ 30 — **confirm by load-testing**, games vary a lot.
+2. Edit these, keeping the display counts identical:
+   - `fly/fly.pygame-worker.toml` → `[env]` `PYGAME_DISPLAYS = "N"`; `[[vm]]`
+     `size`/`memory` to fit; **both** `[services.concurrency]` blocks (`:8010`
+     and `:6080`) to `soft_limit = N`, `hard_limit ≈ N + ⅓` — see the note
+     above on why a low `hard_limit` silently caps sessions.
+   - `fly/fly.pygame-manager.toml` → `NODE_CONFIG` `manager.displays: N`, and
+     its `:8100` `hard_limit` comfortably above `N`.
 3. Deploy the two apps (exec needs **no** change — the single token-routed VNC
    port is display-count-agnostic):
    ```sh
