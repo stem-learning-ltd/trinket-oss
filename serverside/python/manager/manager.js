@@ -174,7 +174,17 @@ const getShellSocket = async () => {
   try {
     const shellClient = Client(shellUrl, {
       'forceNew' : true,
-      'reconnectionAttempts' : 0,
+      // MUST be reconnection:false, NOT reconnectionAttempts:0. socket.io-
+      // client's Manager reads `opts.reconnectionAttempts || Infinity`, so 0
+      // is falsy and becomes INFINITE retries. A shell client that fails or
+      // drops (e.g. a shell scaling to zero) then reconnects forever, leaking
+      // a TCP connection to the flycast proxy on every attempt. Over weeks of
+      // manager uptime these pile up (FIN_WAIT2 + orphaned ESTABLISHED),
+      // saturate the flycast path, and new shell connects start timing out —
+      // at which point every "Run" fails with 'shell connect error' and
+      // python3 goes offline. The manager mints a fresh client per run, so it
+      // needs no auto-reconnect. (The pygame manager already does this.)
+      'reconnection' : false,
       // websocket only: shells sit behind a flycast load balancer with no
       // session affinity, so long-polling breaks (handshake and follow-up
       // requests hit different shell Machines -> "xhr post error"). A single
@@ -190,6 +200,9 @@ const getShellSocket = async () => {
         resolve(shellClient);
       });
       shellClient.on("connect_error", (error) => {
+        // Destroy the failed client so it can't linger and leak a connection
+        // to the flycast proxy (see the reconnection note above).
+        shellClient.close();
         reject(error);
       });
     });
