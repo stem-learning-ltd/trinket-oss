@@ -1,0 +1,13 @@
+body {
+  font-family: sans-serif;
+  margin: 2em;
+}
+
+h1 {
+  color: #1a3d7c;
+}
+
+button {
+  font-size: 1.1em;
+  padding: 0.4em 1em;
+}
