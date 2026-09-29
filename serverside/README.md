@@ -397,11 +397,17 @@ Note: Removing volumes requires restarting the containers.
 
 ### Shell timeouts
 
-Python shells have a 60-second timeout. For long-running computations:
+Python 3 programs and console sessions are stopped after 60 seconds, including time spent waiting for `input()`, along with anything the program started itself. The Python 3 shell's limits are environment variables on the `python3-shell` service. Neither config sets them yet: to change one, add an `environment:` list to the service in `docker-compose.yml`, or an `[env]` section to `fly/fly.python3-shell.toml`. Values are whole milliseconds, at least 1000; anything invalid is ignored and logged at startup.
 
-1. Increase timeout in `shell/trinket/server.js`
-2. Consider breaking code into smaller chunks
-3. Use async patterns where possible
+| Variable | Default | What it limits |
+|----------|---------|----------------|
+| `TRINKET_MAX_RUN_MS` | 60000 | How long one run or console session can last |
+| `TRINKET_IDLE_SOCKET_MS` | 300000 | How long a connection with nothing running stays open. Checked once per sweep, so it can be up to one sweep longer |
+| `TRINKET_EXIT_GRACE_MS` | 30000 | How long a Run connection stays open after the program finishes. A console is left to the idle limit instead |
+| `TRINKET_MAX_SESSION_MS` | 900000 | How long a leftover session folder goes unchanged before it is removed. Must be more than `TRINKET_MAX_RUN_MS` |
+| `TRINKET_SWEEP_EVERY_MS` | 60000 | How often idle connections, leftover folders and stray student processes are checked. Stray processes (ones that belong to no current run) are only removed when the shell runs as root, as it does in its image |
+
+For long-running computations, consider breaking code into smaller chunks.
 
 ## Development (without Docker)
 
@@ -413,6 +419,8 @@ cd python/shell/trinket
 npm install
 node server.js  # Listens on port 8010
 ```
+
+Run this way as an ordinary user, the Python 3 shell does not remove stray student processes, and its startup log says `stray sweep OFF`. Removing them needs root, and it treats every process owned by uid 1000 as student code. That is only true inside the shell's image, which reserves uid 1000 for students. Don't run the shell with `sudo` outside its image: on most Linux machines uid 1000 is the first real user, and the shell would kill that user's processes.
 
 **Manager**:
 ```bash
