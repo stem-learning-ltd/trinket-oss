@@ -234,12 +234,31 @@ io.on("connection", (browser) => {
 
   connections = connections + 1;
 
-  const getSocket = async () => {
-    if (shellSocket) {
-      return shellSocket;
+  // One shell connection per browser, however many events arrive while it is
+  // being opened. Concurrent callers used to open one each, and every one but
+  // the last was never closed.
+  let shellSocketPromise;
+  const getSocket = () => {
+    if (!shellSocketPromise) {
+      shellSocketPromise = connectShell();
+    }
+    return shellSocketPromise;
+  }
+
+  const connectShell = async () => {
+    const client = await getShellSocket();
+
+    // The browser can leave while that connect is in flight -- easily, on a
+    // cold shell where it takes seconds. Its disconnect handler found no shell
+    // socket to close then, so close it here. Otherwise it stays open for
+    // good, holding one of that shell's connection slots and keeping the
+    // Machine from ever auto-stopping.
+    if (browser.disconnected) {
+      if (client) client.close();
+      throw new Error('browser disconnected while connecting to shell');
     }
 
-    shellSocket = await getShellSocket();
+    shellSocket = client;
 
     // shell is ready for input
     shellSocket.on('child ready', () => {
