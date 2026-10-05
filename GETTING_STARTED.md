@@ -20,12 +20,17 @@ cd trinket-oss
 cp config/local.example.yaml config/local.yaml
 
 # Start the services
-docker-compose up
+docker-compose up -d
+
+# Build the CSS (not committed; the site is unstyled without it)
+docker-compose exec app npm run build:css
 ```
 
-Wait for the services to start. You'll see `Server started on port:` when ready.
+Wait for the services to start. You'll see `Server started on port:` in `docker-compose logs app` when ready.
 
 Open **http://localhost:3000** in your browser.
+
+For test accounts and ready-made trinkets to try, see [Seed Data](#seed-data).
 
 ## Frontend Components
 
@@ -74,6 +79,16 @@ docker-compose exec app npm run make-admin user@example.com
 ```
 
 Admin users can access `/admin` for site administration features.
+
+### Seed Data
+
+Create test accounts and one trinket for each kind of run (Python 3, pygame, browser Python, HTML):
+
+```bash
+docker-compose exec app npm run seed
+```
+
+It prints the login details and the URL of every trinket, with what a correct run looks like. The list is also in [scripts/seed/README.md](scripts/seed/README.md). Safe to re-run. Python 3 and pygame trinkets need the [server-side services](#server-side-languages) running.
 
 ## Project Structure
 
@@ -219,20 +234,21 @@ aws:
 
 Python 3, Java, R, and Pygame require backend services. See [serverside/README.md](serverside/README.md) for setup.
 
-Quick start:
+Quick start (Python 3 and pygame):
 ```bash
 cd serverside
-docker compose --profile python3 up --build
+docker compose --profile python3 --profile pygame up -d --build
 ```
 
-Enable in config:
+Enable in `config/local.yaml`, then `docker-compose restart app`:
 ```yaml
 features:
   trinkets:
     python3: true
-    java: true
-    R: true
     pygame: true
+    # java and R also need --profile java / --profile r above
+    java: false
+    R: false
 
 app:
   serverside:

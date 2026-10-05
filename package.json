@@ -85,7 +85,8 @@
     "build:css": "vite build",
     "watch:css": "vite build --watch",
     "build": "npm run build:css",
-    "make-admin": "node scripts/make-admin.js"
+    "make-admin": "node scripts/make-admin.js",
+    "seed": "node scripts/seed/seed.js"
   },
   "repository": {
     "type": "git",

@@ -46,6 +46,9 @@ services:
       - python3-shell
     environment:
       - NODE_ENV=production
+      # Loads config/docker.json (compose hostnames) on top of default.json.
+      # "production" config means Fly in this repo, so compose has its own name.
+      - NODE_CONFIG_ENV=docker
 
   # Java - Manager 8200, Shell 8210
   java-shell:
@@ -126,6 +129,8 @@ services:
       - pygame-worker
     environment:
       - NODE_ENV=production
+      # Loads config/docker.json (compose hostnames) on top of default.json.
+      - NODE_CONFIG_ENV=docker
 
 volumes:
   python-sessions:

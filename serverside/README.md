@@ -106,7 +106,8 @@ app:
 Each manager reads from `{language}/manager/config/`. The `node-config` library merges files:
 
 - `default.json` - Base configuration (local development)
-- `production.json` - Docker/production overrides
+- `docker.json` - Docker Compose overrides (Python 3 and pygame; loaded because docker-compose.yml sets `NODE_CONFIG_ENV=docker`)
+- `production.json` - Docker overrides for Java and R. Both managers expect one, but upstream deleted them, so under Compose they fall back to `default.json`'s `localhost` shell address and can't reach their shells until they're restored. (The Fly deployment is configured in `fly/`, not here.)
 - `custom-environment-variables.json` - Environment variable mappings
 
 **Environment Variables:**
@@ -260,7 +261,7 @@ serverside/
 │   │   ├── package.json
 │   │   └── config/
 │   │       ├── default.json
-│   │       ├── production.json
+│   │       ├── docker.json
 │   │       └── custom-environment-variables.json
 │   └── shell/
 │       ├── Dockerfile

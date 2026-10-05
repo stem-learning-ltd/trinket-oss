@@ -1,5 +1,9 @@
 # FROM phusion/passenger-nodejs:2.0.1
-FROM python:3.10-bullseye
+# Debian 12. Was python:3.10-bullseye, but Debian 11 reached end of LTS on
+# 2026-08-31 and its security pool was emptied: `apt install` 404s on every
+# uncached build. Python itself comes from the image, not Debian, so student
+# code still runs on the same CPython 3.10.
+FROM python:3.10-bookworm
 
 # ARG DEBIAN_FRONTEND=noninteractive
 

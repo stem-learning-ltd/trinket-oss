@@ -7,8 +7,9 @@ app = "stem-trinket-pygame-manager"
 primary_region = "lhr"
 
 [env]
-  # NODE_CONFIG overrides both default.json and the image's production.json
-  # (which points workerUrl at the Docker-DNS name pygame-worker:8010).
+  # NODE_CONFIG is merged on top of config/default.json. The docker-compose
+  # config (config/docker.json, Docker-DNS names like pygame-worker:8010) only
+  # loads with NODE_CONFIG_ENV=docker, so it never applies here.
   #
   # workerUrl uses .flycast, NOT .internal, deliberately: the worker scales to
   # zero, and only a fly-proxy-mediated (flycast) connection can wake a stopped
