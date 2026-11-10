@@ -366,7 +366,6 @@ $('document').ready(function() {
     $(document).on('trinket.account.login',  makeAccountCall('/api/users/login', this));
     //$(document).on('trinket.account.create', makeAccountCall('/api/users',       this));
 
-    $('#brand').click($.proxy(this.onLogoClick, this));
     $('#shareUrl').click($.proxy(this.onShareFocus, this));
     $('#embedCode').click($.proxy(this.onEmbedFocus, this));
 
@@ -1666,21 +1665,6 @@ $('document').ready(function() {
         , type     : 'PUT'
         , dataType : 'json'
         , data     : data
-      });
-    },
-    onLogoClick : function(event) {
-      var self = this;
-
-      event.preventDefault();
-      self.getTrinket(function(trinket) {
-        var share = self.getShareInfo(trinket);
-        self.sendAnalytics('Navigation', {
-          action    : 'Click',
-          label     : 'Logo'
-        }, {
-          name      : 'Snippet Logo Clicked'
-        });
-        window.open(qualifyUrl(share.url));
       });
     },
     onGalleryClick : function(event) {
