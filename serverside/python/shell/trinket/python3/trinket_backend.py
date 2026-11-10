@@ -25,7 +25,7 @@ from matplotlib.transforms import Bbox
 
 def show():
     for manager in Gcf.get_all_fig_managers():
-        manager.canvas.figure.savefig("trinket_plot.png", bbox_inches="tight", pad_inches=0)
+        manager.canvas.figure.savefig("plot.png", bbox_inches="tight", pad_inches=0)
 
 
 ########################################################################
