@@ -258,7 +258,7 @@
   }
 
   .jqconsole-header {
-    color: $primary-color;
+    color: $console-text-color;
     img {
       height: 1em;
     }
@@ -358,12 +358,12 @@
       }
 
       .jqconsole-output {
-        color: #008AFF;
+        color: $console-text-color;
         line-height: 1.5em;
       }
 
       .jqconsole-prompt {
-        color: #008AFF;
+        color: $console-text-color;
       }
 
       .jqconsole-old-prompt {
