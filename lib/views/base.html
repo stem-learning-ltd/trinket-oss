@@ -203,25 +203,17 @@
     {% block content %}{% endblock %}
   </section>
 
-    {% if footer or not user %}
-    <!-- for positioning footer at bottom of screen on short pages -->
-    <div class="push"></div>
-    {% endif %}
-
   </div> <!-- end main-content-wrapper -->
 
   {% block footer %}
     {% if footer or not user %}
-    <footer style="padding: 15px 0; text-align: center; background: #f5f5f5; border-top: 1px solid #ddd; color: #666;">
-      <div class="row">
-        <div class="small-12 columns">
-          <p style="margin: 0;">
-            <a href="https://github.com/trinketapp/trinket-oss" style="color: #333;"><i class="fa fa-github"></i> Open Source on GitHub</a>
-            &nbsp;&middot;&nbsp;
-            CC0 1.0
-          </p>
-        </div>
-      </div>
+    <footer>
+      <img class="footer-logo" src="{{ '/img/powered-by-stem-learning.png' | cachePrefix }}" alt="Powered by STEM Learning" />
+      <p class="footer-source">
+        <a href="https://github.com/trinketapp/trinket-oss"><i class="fa fa-github"></i> Forked from trinketapp/trinket-oss</a>
+        &nbsp;&middot;&nbsp;
+        CC0 1.0
+      </p>
     </footer>
     {% endif %}
   {% endblock %}

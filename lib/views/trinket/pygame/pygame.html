@@ -43,7 +43,6 @@
   $("#trinket-expand, #trinket-collapse").click(function(){
     // Hide elements
     $(".fall-away, footer").toggleClass("hide");
-    $(".push").toggleClass("flat");
     // swap buttons
     $("#trinket-collapse").toggleClass("hide");
     $("#trinket-expand").toggleClass("hide");
@@ -65,7 +64,6 @@
   });
 
   $("footer").toggleClass("hide");
-  $(".push").toggleClass("flat");
   var h = window.innerHeight
   $("#trinket-container").css("height", String(h -101) );
 </script>

@@ -30,7 +30,6 @@
 
   $("#trinket-expand, #trinket-collapse").click(function(){
     $(".fall-away, footer").toggleClass("hide");
-    $(".push").toggleClass("flat");
     $("#trinket-collapse").toggleClass("hide");
     $("#trinket-expand").toggleClass("hide");
     $("#trinket-row").toggleClass("row");
@@ -48,7 +47,6 @@
 
   // Expand by default
   $("footer").toggleClass("hide");
-  $(".push").toggleClass("flat");
   var h = window.innerHeight
   $("#trinket-container").css("height", String(h -101) );
 </script>
