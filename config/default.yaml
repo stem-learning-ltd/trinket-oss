@@ -19,12 +19,12 @@ features:
     R: false           # Requires R backend
 
 app:
-  siteName: 'Trinket'
+  siteName: 'STEM Learning IDE'
   siteUrl: ''
   supportEmail: ''
   adminEmail: ''
-  logo: '/img/trinket-logo.png'
-  logoIcon: '/img/trinket-logo-circles.png'
+  logo: '/img/stem-learning-logo.png'
+  logoIcon: '/img/stem-learning-logo-icon.png'
   hostname: 0.0.0.0
   port: 3000
   url:
