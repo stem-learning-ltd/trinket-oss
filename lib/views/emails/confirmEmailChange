@@ -1,6 +1,6 @@
 <html><body>
 <div id="content-container" style="width:640px; margin-left: auto; margin-right: auto;">
-  <div id="content-body" style="padding: 20px; background: #ffffff; border: 1px solid #dddddd; border-radius: 3px; line-height: 2em; font-family: Arial">
+  <div id="content-body" style="padding: 20px; background: #ffffff; border: 1px solid #dddddd; border-radius: 3px; line-height: 2em; font-family: Roboto, Arial, sans-serif">
     <p>Hi {{fullname}},</p>
     <p>We received a request to change your email to {{new_email}}. If this is correct, please click the button below.</p>
     <p><a style="color: #ffffff; background-color: #1e990e; padding: 0.875rem 1.75rem 0.9375rem 1.75rem; font-size: 0.8125rem; text-decoration: none" href="{{change_email_url}}"><strong>Confirm Email</strong></a></p>

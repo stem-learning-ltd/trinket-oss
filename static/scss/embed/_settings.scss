@@ -7,7 +7,9 @@
 
 @import "public/components/foundation/scss/foundation/functions";
 
-$body-font-family: "Merriweather", Times, Georgia, serif;
+$body-font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
+$header-font-family: join("Roboto Condensed", $body-font-family);
+$header-font-weight: 700;
 $primary-color: #DC0745;   // STEM Learning red; replaced the Trinket blue (#008AFF)
 $secondary-color: #26BF12; // green
 $success-color: #26BF12;   // green
