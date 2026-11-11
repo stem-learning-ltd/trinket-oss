@@ -6,50 +6,42 @@ html, body {
   margin-bottom: 0;
 }
 
+// The page is a column: the content wrapper grows to fill the window, which
+// keeps the footer at the bottom of short pages whatever the footer's height.
+body {
+  display: flex;
+  flex-direction: column;
+}
+
 .main-content-wrapper {
-  min-height: 100%;
-  height: auto !important;
-  height: 100%;
-  margin: 0 auto -200px;
+  flex: 1 0 auto;
 }
 
 span.or { padding: 0 0 0 15px; }
 
-.push {
-  height: 200px;
-}
-
-.push.flat {
-  height: 0px;
-}
-
+// Site footer, as tall as its content: the "Powered by STEM Learning" sticker
+// centred above the source credit.
 footer {
-	border-top: 1px solid #d4d4d4;
-	padding: 20px 0;
-  min-height: 200px;
-  background: #eee;
+  flex-shrink: 0;
+  border-top: 1px solid #d4d4d4;
+  // Less padding below than above: the line of text already has space under
+  // its letters, so this is what looks even.
+  padding: 16px 0.9375rem 12px;
+  background: #f5f5f5;
+  color: #666;
   font-family: "Lato", Helvetica, sans-serif;
-	.copyright {
-		font-size: .75em;
-		font-weight: 300;
-    img { width: 100px }
-	}
-	.social {
-    padding-top: 10px;
-		font-size: 1.5em;
-		a { margin-right: 15px; }
-	}
-  div.footer-column {
-    h4 {
-      font-weight: 400;
-		  font-size: 1.25em;
-      font-family: "Lato", Helvetica, sans-serif;
-    }
-    .footer-list {
-      margin: 0;
-      list-style-type: none;
-      a { font-size: 0.75em; }
-    }
+  text-align: center;
+
+  .footer-logo {
+    display: block;
+    height: 64px;
+    width: auto;
+    margin: 0 auto 12px;
+  }
+
+  .footer-source {
+    margin: 0;
+    a { color: #333; }
   }
 }
 

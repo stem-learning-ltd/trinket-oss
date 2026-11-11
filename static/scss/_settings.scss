@@ -8,12 +8,12 @@
 @import "public/components/foundation/scss/foundation/functions";
 
 $green: #26BF12;
-$blue: #008AFF;
+$stem-red: #DC0745; // STEM Learning brand red; replaced the Trinket blue (#008AFF)
 $yellow: #FFDA00;
-$blue-40: lighten($blue, 40%);
 
 $body-font-family: "Merriweather", Times, Georgia, serif;
-$primary-color: $blue;
+$primary-color: $stem-red;
+$primary-tint: lighten($primary-color, 40%);
 $secondary-color: $green;
 $success-color: $green;
 

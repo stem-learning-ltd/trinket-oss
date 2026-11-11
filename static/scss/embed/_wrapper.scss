@@ -113,16 +113,27 @@ body.snapshot {
   }
 
   .title-bar {
-    padding: 0.25em;
+    // One row, centred on the toolbar buttons beside it (2.16rem tall), so
+    // the logo, language icon and language name line up with "Run".
+    display: flex;
+    align-items: center;
+    height: 2.16rem;
+    padding: 0 0.25em;
     font-size: 1.25em;
     a {
       color: #525252;
     }
 
+    // Logo wrapper: flex, so the image has no inline gap beneath it.
+    > span {
+      display: flex;
+      margin-right: 0.3em;
+    }
+
+    // Sized to nearly fill the bar: the STEM Learning logo stacks its text,
+    // so it needs more height than the old one-line logo did to stay legible.
     img {
-      height: 1.5em;
-      margin: -.5em 0 0 0;
-      padding: 0.25em 0;
+      height: 1.6em;
     }
 
     .trinket-label {
@@ -130,20 +141,38 @@ body.snapshot {
       padding: 0 0.5em;
       color: #525252;
       line-height: 1;
-      display: inline-block !important;
-      position: relative;
-      top: -6px;
+      display: flex !important;
+      align-items: center;
 
       font-style: normal;
 
+      // The icon and names are flex boxes rather than inline text so they
+      // centre as boxes. The names use Foundation's show-for-* classes, which
+      // inherit this display value, so they stay on the same row.
       i {
-        vertical-align: middle;
+        display: inline-flex;
+        align-items: center;
         label {
           font-style: normal;
+          margin-left: 0.3em;
+        }
+
+        // Neither icon font centres its glyph on the line: the Python/Java
+        // one draws it high and the pygame one low. Nudge each to the middle.
+        &[class^="icon-"]::before {
+          position: relative;
+          top: 0.1em;
+        }
+        &.pygame-icon::before {
+          position: relative;
+          top: -0.05em;
         }
       }
       label {
         cursor: default;
+      }
+      > label {
+        margin-left: 0.4em;
       }
     }
   }

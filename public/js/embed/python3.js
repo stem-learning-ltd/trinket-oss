@@ -19,7 +19,6 @@ var initInterval;
 var runningInterval;
 
 var disableAceEditor = window.userSettings && window.userSettings.disableAceEditor || false;
-var poweredByText = $('body').data('powered-by-text') || 'Powered by';
 
 function getErrorData(error) {
   var match = error.toString().match(/^(.*?)[:;]\s*(.*?)(?:on\sline\s(\d+).*)?$/i);
@@ -125,13 +124,6 @@ function resetOutput() {
     // reset any ANSI escape code graphics
     jqconsole.Write("\x1b[0m");
     jqconsole.Reset();
-    consoleHeader();
-  }
-}
-
-function consoleHeader() {
-  if (jqconsole) {
-    jqconsole.Append('<span class="jqconsole-header" aria-hidden="true">' + poweredByText + ' <img id="powered-by-trinket" src="' + trinketConfig.prefix('/img/trinket-logo.png') + '">\n</span>');
   }
 }
 
@@ -235,7 +227,6 @@ function runCode() {
           clear : function() {
             resetOnce = doneRunning(resetOnce, function() {
               jqconsole.Clear();
-              consoleHeader();
             });
           },
           script_error : function(data) {
@@ -397,7 +388,6 @@ function runConsole() {
       },
       clear : function() {
         jqconsole.Clear();
-        consoleHeader();
       },
       script_error : function(data) {
         jqconsole.Write(data.error, 'jqconsole-error');

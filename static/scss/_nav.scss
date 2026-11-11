@@ -12,6 +12,12 @@
 	li.name {
     padding: .25rem .75rem;
     font-size: 1.25rem;
+    // The STEM Learning logo is a stacked lockup (~2.3:1), so size it by
+    // height to fill the bar rather than by the width used for the old logo.
+    img {
+      width: auto;
+      height: 2.25rem;
+    }
     span.label {
       line-height: 1;
       position: relative;

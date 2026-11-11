@@ -114,8 +114,12 @@
         {% endif %}
 
         {# Title bar - different content for outputOnly vs full #}
+        {# On our own snippet and library pages the site's top bar already shows
+           the logo, so only show it here when the editor is embedded elsewhere. #}
+        {% set showBarLogo = not sharePage and not library %}
         <section class="left title-bar">
         {% if outputOnly %}
+          {% if showBarLogo %}
           <span title="{{ config.app.siteName }}" data-dropdown="brand-menu" aria-controls="brand-menu" aria-expanded="false">
             {% if config.app.logo %}<img src="{{ config.app.logo | cachePrefix }}" alt="{{ config.app.siteName }}" />{% endif %}
           </span>
@@ -123,15 +127,13 @@
             <li><a href="//{{config.app.url.hostname}}" target="_blank">About</a></li>
             {% if selfServiceEnabled() %}<li><a href="//{{config.app.url.hostname}}/signup" target="_blank">Sign Up</a></li>{% endif %}
           </ul>
+          {% endif %}
         {% else %}
-          <span title="{{ config.app.siteName }}" data-dropdown="brand-menu" aria-controls="brand-menu" aria-expanded="false">
+          {% if showBarLogo %}
+          <span title="{{ config.app.siteName }}">
             {% if config.app.logo %}<img class="show-for-large-up" src="{{ config.app.logo | cachePrefix }}" alt="{{ config.app.siteName }}" />{% endif %}
             {% if config.app.logoIcon %}<img class="show-for-medium-down" src="{{ config.app.logoIcon | cachePrefix }}" alt="{{ config.app.siteName }}" />{% endif %}
           </span>
-          {% if runMode != "calculator" %}
-          <ul id="brand-menu" class="f-dropdown" data-dropdown-content aria-hidden="true" tabindex="-1">
-            <li><a id="brand">View on {{ config.app.siteName }} <i class="fa fa-external-link"></i></a></li>
-          </ul>
           {% endif %}
           {% block trinket_label %}
           {% endblock %}

@@ -76,7 +76,6 @@ function initConsoleOutput() {
   jqconsole.Write("\x1b[0m");
   jqconsole.Reset();
 
-  consoleHeader();
 }
 
 function showSplitOutput() {
@@ -191,7 +190,6 @@ function resetOutput() {
     // reset any ANSI escape code graphics
     jqconsole.Write("\x1b[0m");
     jqconsole.Reset();
-    consoleHeader();
   }
 }
 
@@ -271,12 +269,6 @@ function resetServerTimer() {
   stopServerTimer();
   serverTimer = setTimeout(serverTimeout, api.getTimeoutDelay());
   stillThereTimeout = setTimeout(stillTherePrompt, api.getTimeoutDelay() / 2);
-}
-
-function consoleHeader() {
-  if (jqconsole) {
-    jqconsole.Append('<span id="powered-by" class="jqconsole-header" aria-hidden="true">Powered by <img id="powered-by-trinket" src="' + trinketConfig.prefix('/img/trinket-logo.png') + '"></span>');
-  }
 }
 
 function preRun() {
@@ -429,7 +421,7 @@ function runCode() {
               , {
                   child_ready : function() {
                     resetOnce = doneRunning(resetOnce, function() {
-                      $('#powered-by').append(' <span class="jqconsole-header" aria-hidden="true">Connected...\n</span>');
+                      jqconsole.Append('<span class="jqconsole-header" aria-hidden="true">Connected...\n</span>');
                       var $canvas = $('#graphic').find('canvas');
                       $canvas.focus();
 
@@ -455,7 +447,6 @@ function runCode() {
                   clear : function() {
                     resetOnce = doneRunning(resetOnce, function() {
                       jqconsole.Clear();
-                      consoleHeader();
                     });
                   },
                   script_error : function(data) {

@@ -8,10 +8,14 @@
 @import "public/components/foundation/scss/foundation/functions";
 
 $body-font-family: "Merriweather", Times, Georgia, serif;
-$primary-color: #008AFF;   // blue
+$primary-color: #DC0745;   // STEM Learning red; replaced the Trinket blue (#008AFF)
 $secondary-color: #26BF12; // green
 $success-color: #26BF12;   // green
 $tertiary-color: #FFDA00; //yellow
+
+// Text in the run panel: status lines ("Connecting to server") and program
+// output. Kept blue rather than the brand red, which would read as an error.
+$console-text-color: #008AFF;
 
 $input-font-size: rem-calc(16);
 $input-error-message-padding: rem-calc(9);
