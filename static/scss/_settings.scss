@@ -11,7 +11,7 @@ $green: #26BF12;
 $stem-red: #DC0745; // STEM Learning brand red; replaced the Trinket blue (#008AFF)
 $yellow: #FFDA00;
 
-$body-font-family: "Merriweather", Times, Georgia, serif;
+$body-font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
 $primary-color: $stem-red;
 $primary-tint: lighten($primary-color, 40%);
 $secondary-color: $green;
@@ -51,8 +51,8 @@ $topbar-divider-border-top: solid 1px #CCC;
 
 $tab-border-radius: 8px;
 
-$header-font-family: join("Lato", $body-font-family);
-$header-font-weight: 900;
+$header-font-family: join("Roboto Condensed", $body-font-family);
+$header-font-weight: 700;
 
 $h3-font-size: rem-calc(22);
 $h4-font-size: rem-calc(18);

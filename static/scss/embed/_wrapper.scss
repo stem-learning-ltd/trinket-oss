@@ -430,7 +430,7 @@ body.has-remix .trinket-header .remix-switch {
   }
   .remix-switch-inner:before, .remix-switch-inner:after {
     display: block; float: left; width: 50%; height: 21px; padding: 0; line-height: 21px;
-    font-size: 14px; color: white; font-family: Trebuchet, Arial, sans-serif; font-weight: bold;
+    font-size: 14px; color: white; font-family: $body-font-family; font-weight: bold;
     -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box;
   }
   .remix-switch-inner:before {

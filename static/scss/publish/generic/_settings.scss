@@ -9,7 +9,7 @@
 
 $fa-font-path: "../../components/font-awesome/fonts";
 
-$body-font-family: "Merriweather", Times, Georgia, serif;
+$body-font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
 $primary-color: #008AFF;
 $secondary-color: #26BF12;
 $success-color: #26BF12;
@@ -78,8 +78,8 @@ $topbar-media-query: $medium-up !default;
 
 $tab-border-radius: 8px;
 
-$header-font-family: join("Lato", $body-font-family);
-$header-font-weight: 900;
+$header-font-family: join("Roboto Condensed", $body-font-family);
+$header-font-weight: 700;
 
 $h3-font-size: rem-calc(22);
 $h4-font-size: rem-calc(18);

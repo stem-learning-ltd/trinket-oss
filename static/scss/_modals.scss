@@ -16,7 +16,8 @@
   }
   .modal-title {
     font-size: rem-calc(27px);
-    font-weight: 900;
+    font-family: $header-font-family;
+    font-weight: $header-font-weight;
     margin-bottom: rem-calc(12px);
   }
   fieldset {
