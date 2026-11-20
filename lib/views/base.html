@@ -114,9 +114,6 @@
           </ul>
           {% endif %}
           <ul class="right">
-            {% block navlinks %}
-              <li><a href="/help"> <i class="fa fa-question-circle"></i> <span><span class="hide-for-medium-only">Help </span></span></a></li>
-            {% endblock %}
             {% if user %}
               <li class="has-dropdown" role="navigation" id="trinket-user-menu">
                 <a class="dropdown-btn" role='button' aria-controls="user_dropdown" aria-label="Open User Menu">
@@ -172,8 +169,6 @@
                   {% if user.hasRole("admin") or user.loggedInAs() %}
                   <li><a href="/admin"><i class="fa fa-lock"></i> Admin</a></li>
                   {% endif %}
-                  <li class="divider" role="presentation"></li>
-                  <li><a href="/help">Help</a></li>
                 </ul>
               </li>
               <li>
